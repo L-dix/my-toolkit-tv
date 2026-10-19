@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -86,6 +87,13 @@ class AppRepository(private val context: Context) {
         if (total == 0f) return Color(0xFF3A3F4B)
         return Color(r / total / 255f, g / total / 255f, b / total / 255f)
     }
+
+    fun isInstalled(packageName: String): Boolean =
+        try {
+            pm.getApplicationInfo(packageName, 0).enabled
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
 
     fun launchIntent(app: LauncherApp): Intent =
         Intent(Intent.ACTION_MAIN)

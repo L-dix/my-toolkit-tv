@@ -115,7 +115,7 @@ private fun AppSummary(app: LauncherApp) {
 }
 
 @Composable
-private fun ActionItem(
+internal fun ActionItem(
     title: String,
     subtitle: String,
     onClick: () -> Unit,

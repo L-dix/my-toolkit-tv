@@ -83,21 +83,7 @@ fun AppTile(
         modifier
             .alpha(tileAlpha)
             .accentGlow(glow, glowAlpha)
-            .onPreviewKeyEvent { event ->
-                if (!isMoving) return@onPreviewKeyEvent false
-                val down = event.type == KeyEventType.KeyDown
-                when (event.nativeKeyEvent.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_LEFT -> { if (down) onMoveBy(-1); true }
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> { if (down) onMoveBy(1); true }
-                    KeyEvent.KEYCODE_DPAD_UP -> { if (down) onMoveBy(-columns); true }
-                    KeyEvent.KEYCODE_DPAD_DOWN -> { if (down) onMoveBy(columns); true }
-                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                        if (event.type == KeyEventType.KeyUp) onDrop()
-                        true
-                    }
-                    else -> false
-                }
-            },
+            .moveKeys(isMoving, columns, onMoveBy, onDrop),
     ) {
         Card(
             onClick = onClick,
@@ -115,7 +101,7 @@ fun AppTile(
             scale = CardDefaults.scale(focusedScale = if (isMoving) 1.14f else 1.08f),
             border = CardDefaults.border(
                 // Focus is shown by the glow alone; the border only marks a tile being moved.
-                focusedBorder = if (isMoving) Border(BorderStroke(3.dp, ToolkitColors.Accent), shape = TileShape) else Border.None,
+                focusedBorder = if (isMoving) movingBorder() else Border.None,
             ),
             colors = CardDefaults.colors(containerColor = ToolkitColors.Surface),
         ) {
@@ -156,8 +142,28 @@ private fun IconTileContent(app: LauncherApp) {
     }
 }
 
+/** While [isMoving], the arrows move the tile by one position or one row and OK drops it. */
+internal fun Modifier.moveKeys(isMoving: Boolean, columns: Int, onMoveBy: (Int) -> Unit, onDrop: () -> Unit) =
+    onPreviewKeyEvent { event ->
+        if (!isMoving) return@onPreviewKeyEvent false
+        val down = event.type == KeyEventType.KeyDown
+        when (event.nativeKeyEvent.keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> { if (down) onMoveBy(-1); true }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> { if (down) onMoveBy(1); true }
+            KeyEvent.KEYCODE_DPAD_UP -> { if (down) onMoveBy(-columns); true }
+            KeyEvent.KEYCODE_DPAD_DOWN -> { if (down) onMoveBy(columns); true }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                if (event.type == KeyEventType.KeyUp) onDrop()
+                true
+            }
+            else -> false
+        }
+    }
+
+internal fun movingBorder() = Border(BorderStroke(3.dp, ToolkitColors.Accent), shape = TileShape)
+
 @Composable
-private fun MoveOverlay() {
+internal fun MoveOverlay() {
     Box(
         Modifier
             .fillMaxSize()

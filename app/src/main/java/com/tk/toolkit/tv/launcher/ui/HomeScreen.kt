@@ -55,8 +55,8 @@ import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.LauncherViewModel
 import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
-import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.LauncherApp
+import com.tk.toolkit.tv.launcher.data.WatchItem
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private const val COLUMNS = 5
@@ -74,6 +74,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     fun requesterFor(key: String) = focusRequesters.getOrPut(key) { FocusRequester() }
 
     var menuApp by remember { mutableStateOf<LauncherApp?>(null) }
+    var menuWatchItem by remember { mutableStateOf<WatchItem?>(null) }
     var showHidden by remember { mutableStateOf(false) }
     var lastFocusedKey by rememberSaveable { mutableStateOf<String?>(null) }
     var lastFocusedIndex by rememberSaveable { mutableStateOf(0) }
@@ -81,13 +82,13 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var initialFocusPlaced by remember { mutableStateOf(false) }
 
     val scrollSpec = with(LocalDensity.current) { remember { minimalScrollSpec(28.dp.toPx()) } }
-    val watchItems = ContinueWatching.items
+    val watchItems = state.watchItems
     val watchKeys = watchItems.map { it.key }
     val gridKeys = watchKeys + state.apps.map { it.packageName } +
         if (state.hiddenApps.isNotEmpty()) listOf(MORE_APPS_KEY) else emptyList()
 
     // This is the home screen: Back never leaves it, it only cancels a move.
-    BackHandler { if (state.movingPackage != null) viewModel.endMove() }
+    BackHandler { if (state.movingKey != null) viewModel.endMove() }
 
     // Initial focus, and keeping focus in the grid when the focused tile goes away
     // (hidden, uninstalled, or "More Apps" emptied).
@@ -130,16 +131,28 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                         item(key = WATCH_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
                             SectionTitle("Continue Watching", accentBar = true)
                         }
-                        items(watchItems, key = { it.key }) { item ->
+                        itemsIndexed(watchItems, key = { _, item -> item.key }) { index, item ->
+                            val isMoving = item.key == state.movingKey
                             WatchTile(
                                 item = item,
-                                dimmed = state.movingPackage != null,
+                                index = index,
+                                columns = COLUMNS,
+                                isMoving = isMoving,
+                                dimmed = state.movingKey != null && !isMoving,
                                 focusRequester = requesterFor(item.key),
                                 onFocused = {
                                     lastFocusedKey = item.key
                                     lastFocusedIndex = watchKeys.indexOf(item.key)
                                 },
-                                onClick = { if (state.movingPackage == null) context.safeStart(item.intent()) },
+                                onClick = { if (state.movingKey == null) context.safeStart(item.intent()) },
+                                onLongClick = { if (state.movingKey == null) menuWatchItem = item },
+                                onMoveBy = viewModel::moveBy,
+                                onDrop = viewModel::endMove,
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = null,
+                                    fadeOutSpec = null,
+                                    placementSpec = if (state.movingKey != null) spring(stiffness = Spring.StiffnessMediumLow) else null,
+                                ),
                             )
                         }
                     }
@@ -148,42 +161,42 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                         SectionTitle("Apps", accentBar = false)
                     }
                     itemsIndexed(state.apps, key = { _, app -> app.packageName }) { index, app ->
-                        val isMoving = app.packageName == state.movingPackage
+                        val isMoving = app.packageName == state.movingKey
                         AppTile(
                             app = app,
                             index = index,
                             columns = COLUMNS,
                             isMoving = isMoving,
-                            dimmed = state.movingPackage != null && !isMoving,
+                            dimmed = state.movingKey != null && !isMoving,
                             focusRequester = requesterFor(app.packageName),
                             onFocused = {
                                 lastFocusedKey = app.packageName
                                 lastFocusedIndex = watchKeys.size + index
                             },
                             onClick = {
-                                if (state.movingPackage == null) context.safeStart(viewModel.launchIntent(app))
+                                if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
                             },
-                            onLongClick = { if (state.movingPackage == null) menuApp = app },
+                            onLongClick = { if (state.movingKey == null) menuApp = app },
                             onMoveBy = viewModel::moveBy,
                             onDrop = viewModel::endMove,
                             modifier = Modifier.animateItem(
                                 fadeInSpec = null,
                                 fadeOutSpec = null,
                                 // Slide only while moving; hiding/unhiding applies instantly.
-                                placementSpec = if (state.movingPackage != null) spring(stiffness = Spring.StiffnessMediumLow) else null,
+                                placementSpec = if (state.movingKey != null) spring(stiffness = Spring.StiffnessMediumLow) else null,
                             ),
                         )
                     }
                     if (state.hiddenApps.isNotEmpty()) {
                         item(key = MORE_APPS_KEY) {
                             MoreAppsTile(
-                                dimmed = state.movingPackage != null,
+                                dimmed = state.movingKey != null,
                                 focusRequester = requesterFor(MORE_APPS_KEY),
                                 onFocused = {
                                     lastFocusedKey = MORE_APPS_KEY
                                     lastFocusedIndex = watchKeys.size + state.apps.size
                                 },
-                                onClick = { if (state.movingPackage == null) showHidden = true },
+                                onClick = { if (state.movingKey == null) showHidden = true },
                             )
                         }
                     }
@@ -192,7 +205,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         }
 
         AnimatedVisibility(
-            visible = state.movingPackage != null,
+            visible = state.movingKey != null,
             enter = fadeIn() + slideInVertically { it },
             exit = fadeOut() + slideOutVertically { it },
             modifier = Modifier
@@ -212,6 +225,15 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                 context.safeStart(viewModel.launchIntent(app))
             },
             onLongPress = { menuApp = it },
+        )
+    }
+
+    menuWatchItem?.let { item ->
+        WatchActionsDialog(
+            item = item,
+            onDismiss = { menuWatchItem = null },
+            onMove = { menuWatchItem = null; viewModel.startMove(item.key) },
+            onRemove = { menuWatchItem = null; viewModel.removeWatchItem(item) },
         )
     }
 
