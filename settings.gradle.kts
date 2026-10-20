@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Toolkit"
 include(":app")
+include(":installer")
  

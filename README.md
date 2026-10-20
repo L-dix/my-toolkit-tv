@@ -40,31 +40,37 @@ Local release builds are signed with the debug key (it's a personal sideloaded a
 
 ## Installation sans PC
 
-Chaque push sur `main` compile l'APK dans GitHub Actions et le publie dans une Release. La dernière version est toujours à cette adresse :
+Chaque push sur `main` compile les APK dans GitHub Actions et les publie dans une Release. Les dernières versions sont toujours à ces adresses :
 
 ```
+https://github.com/L-dix/my-toolkit-tv/releases/latest/download/toolkit-installer.apk
 https://github.com/L-dix/my-toolkit-tv/releases/latest/download/toolkit-tv.apk
 ```
+
+**Pourquoi un installateur ?** Depuis Android 13 (donc sur Android TV 14), Android interdit d'activer le service d'accessibilité d'une appli installée en ouvrant un fichier APK (Downloader, gestionnaire de fichiers), et les TV n'offrent pas le réglage « Autoriser les paramètres restreints » des téléphones. Une appli installée par session, comme le font les stores, n'est pas concernée : **Toolkit Installer** installe Toolkit de cette façon. Il télécharge la dernière Release de ce dépôt et vérifie que l'APK est signé avec la même clé que lui avant de l'installer.
 
 Sur la TV :
 
 1. **Installer Downloader** : Google Play › rechercher « Downloader » (éditeur AFTVnews) › Installer.
-2. **Autoriser les sources inconnues pour Downloader** : Paramètres › Applications › Sécurité et restrictions › Sources inconnues › activer **Downloader**. Si l'option n'apparaît pas, activer d'abord le mode développeur (Paramètres › Système › À propos › appuyer 7 fois sur « Build du système d'exploitation Android TV »). Sinon, Downloader propose lui-même d'ouvrir ce réglage au moment de l'installation.
-3. **Télécharger l'APK** : ouvrir Downloader, saisir l'URL ci-dessus dans le champ d'adresse › Go › **Installer**. Astuce : raccourcir l'URL depuis le téléphone (par ex. avec is.gd) pour avoir moins de caractères à taper à la télécommande.
-4. **Activer Toolkit comme écran d'accueil** : Paramètres › Système › Accessibilité › **Toolkit** › Activer. Le bouton Home ouvre alors Toolkit (un appui long ouvre les réglages rapides), et « Force stop » fonctionne en un clic.
-   - Si l'interrupteur est grisé avec « Paramètre restreint » (Android 13 et plus, applis installées hors Play Store) : Paramètres › Applications › Toolkit › menu ⋮ ou bas de page › « Autoriser les paramètres restreints », puis recommencer.
+2. **Autoriser les sources inconnues pour Downloader** : Paramètres › Applications › Sécurité et restrictions › Sources inconnues › activer **Downloader**. Si l'option n'apparaît pas, activer d'abord le mode développeur (Paramètres › Système › À propos › appuyer 7 fois sur « Build du système d'exploitation Android TV »).
+3. **Installer Toolkit Installer** : dans Downloader, saisir l'URL de `toolkit-installer.apk` ci-dessus › Go › **Installer**.
+4. **Ouvrir Toolkit Installer** (liste des applis) et suivre l'écran :
+   - si Toolkit avait déjà été installé avec Downloader, **Désinstaller Toolkit** d'abord ;
+   - **Ouvrir le réglage** › autoriser **Toolkit Installer** dans Sources inconnues, puis Retour ;
+   - **Installer Toolkit** › confirmer l'installation.
+5. **Activer Toolkit comme écran d'accueil** : bouton **Ouvrir l'accessibilité** (ou Paramètres › Système › Accessibilité) › **Toolkit** › Activer. Attention à ne pas activer TalkBack, qui lit l'écran à voix haute. Le bouton Home ouvre alors Toolkit (un appui long ouvre les réglages rapides), et « Force stop » fonctionne en un clic.
 
-**Mises à jour** : rouvrir Downloader et télécharger la même URL. Le nouvel APK s'installe par-dessus l'ancien (même clé de signature, numéro de version plus élevé) en conservant l'ordre des applis et les épingles.
+**Mises à jour** : ouvrir Toolkit Installer › **Mettre à jour Toolkit**. Ne pas réinstaller Toolkit avec Downloader : Android bloquerait de nouveau son accessibilité. Toolkit Installer lui-même se met à jour avec Downloader (URL de `toolkit-installer.apk`).
 
 ### Revenir en arrière
 
 - **Retrouver l'accueil Google TV** : Paramètres › Système › Accessibilité › Toolkit › Désactiver. Le bouton Home ouvre de nouveau l'accueil d'origine ; Toolkit reste installé et s'ouvre depuis la liste des applis.
-- **Désinstaller Toolkit** : Paramètres › Applications › Toolkit › Désinstaller. Le service d'accessibilité disparaît avec l'appli.
-- **Revenir à une version précédente** : Android refuse d'installer une version plus ancienne par-dessus une plus récente. Désinstaller d'abord Toolkit (l'ordre des applis et les épingles sont perdus), puis télécharger l'APK voulu depuis la page Releases du dépôt, par ex. `https://github.com/L-dix/my-toolkit-tv/releases/download/v1.0.5/toolkit-tv.apk`.
+- **Désinstaller Toolkit** : Paramètres › Applications › Toolkit › Désinstaller (et de même pour Toolkit Installer et Downloader). Le service d'accessibilité disparaît avec l'appli.
+- **Revenir à une version précédente** : Android refuse d'installer une version plus ancienne par-dessus une plus récente. Désinstaller d'abord Toolkit (l'ordre des applis et les épingles sont perdus), puis réinstaller la version voulue. Toolkit Installer installe toujours la dernière Release : pour une version précise, la télécharger depuis la page Releases du dépôt (par ex. `https://github.com/L-dix/my-toolkit-tv/releases/download/v1.0.5/toolkit-tv.apk`), en sachant qu'installée ainsi elle aura l'accessibilité bloquée.
 
 ### Signature des Releases (à faire une fois)
 
-Le workflow `.github/workflows/release.yml` signe l'APK avec une clé de release stable, stockée dans les secrets du dépôt : sans elle, chaque build aurait une clé différente et les mises à jour refuseraient de s'installer. Sur github.com (le navigateur du téléphone suffit) : dépôt › **Settings** › **Secrets and variables** › **Actions** › **New repository secret**, trois fois :
+Le workflow `.github/workflows/release.yml` signe les APK avec une clé de release stable, stockée dans les secrets du dépôt : sans elle, chaque build aurait une clé différente et les mises à jour refuseraient de s'installer. Sur github.com (le navigateur du téléphone suffit) : dépôt › **Settings** › **Secrets and variables** › **Actions** › **New repository secret**, trois fois :
 
 | Nom | Valeur |
 | --- | --- |

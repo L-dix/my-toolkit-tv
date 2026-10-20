@@ -1,8 +1,9 @@
 name: Release APK
 
-# Builds the signed release APK on every push to main and publishes it as the latest
-# GitHub Release, always under the same file name, so this URL stays valid:
+# Builds the signed release APKs on every push to main and publishes them as the latest
+# GitHub Release, always under the same file names, so these URLs stay valid:
 #   https://github.com/<owner>/<repo>/releases/latest/download/toolkit-tv.apk
+#   https://github.com/<owner>/<repo>/releases/latest/download/toolkit-installer.apk
 on:
   push:
     branches: [main]
@@ -42,7 +43,7 @@ jobs:
 
       # Without the keystore this still builds (debug-signed) to check the code compiles,
       # but nothing is published: a throwaway key would block updates on the TV.
-      - name: Build release APK
+      - name: Build release APKs
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -60,14 +61,16 @@ jobs:
         run: |
           tag="v1.0.$VERSION_CODE"
           apk="$RUNNER_TEMP/toolkit-tv.apk"
+          installer="$RUNNER_TEMP/toolkit-installer.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
+          cp installer/build/outputs/apk/release/installer-release.apk "$installer"
           if gh release view "$tag" > /dev/null 2>&1; then
-            gh release upload "$tag" "$apk" --clobber
+            gh release upload "$tag" "$apk" "$installer" --clobber
             gh release edit "$tag" --latest
           else
-            gh release create "$tag" "$apk" \
+            gh release create "$tag" "$apk" "$installer" \
               --target "$GITHUB_SHA" \
               --title "Toolkit $tag" \
-              --notes "Build #$VERSION_CODE of ${GITHUB_SHA::7}. Install: https://github.com/$GITHUB_REPOSITORY/releases/latest/download/toolkit-tv.apk" \
+              --notes "Build #$VERSION_CODE of ${GITHUB_SHA::7}. On Android TV 13+, install toolkit-installer.apk first, then install Toolkit from it (see README)." \
               --latest
           fi
