@@ -54,7 +54,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.LauncherViewModel
-import com.tk.toolkit.tv.launcher.data.Ambilight
 import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
@@ -117,7 +116,6 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             ClockHeader(
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
-                onOpenAmbilight = { Ambilight.open(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },
                 modifier = Modifier.padding(horizontal = 48.dp),
             )
