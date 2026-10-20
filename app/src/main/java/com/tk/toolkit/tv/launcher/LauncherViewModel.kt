@@ -91,6 +91,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun launchIntent(app: LauncherApp) = repository.launchIntent(app)
 
+    /** Package of the installed Kick app, if any. */
+    fun kickPackage(): String? = _state.value.let { current ->
+        HomeDefaults.resolve(listOf(HomeDefaults.KICK), current.apps + current.hiddenApps).firstOrNull()
+    }
+
     /** Starts moving an app (by package) or a pinned app (by its Continue Watching key). */
     fun startMove(key: String) = _state.update { it.copy(movingKey = key) }
 

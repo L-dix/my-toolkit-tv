@@ -60,6 +60,7 @@ import com.tk.toolkit.tv.launcher.LauncherViewModel
 import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
+import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
@@ -144,6 +145,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     Box(Modifier.fillMaxSize().then(rainbowKey)) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
+                onOpenKickChannel = {
+                    AppActions.openLink(context, HomeDefaults.KICK_CHANNEL_URL, viewModel.kickPackage())
+                },
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },

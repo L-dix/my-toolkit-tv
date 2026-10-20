@@ -24,6 +24,28 @@ object AppActions {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
 
+    /**
+     * Opens [url] in the app [packageName] if it handles the link, else in any app that does,
+     * else just opens that app.
+     */
+    fun openLink(context: Context, url: String, packageName: String?) {
+        val pm = context.packageManager
+        val view = Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val link = listOfNotNull(packageName?.let { Intent(view).setPackage(it) }, view)
+            .firstOrNull { it.resolveActivity(pm) != null }
+        if (link != null) {
+            context.safeStart(link)
+            return
+        }
+        val app = packageName?.let { pm.getLeanbackLaunchIntentForPackage(it) ?: pm.getLaunchIntentForPackage(it) }
+        if (app != null) {
+            Toast.makeText(context, "Le lien ne s'ouvre pas directement : ouverture de l'appli", Toast.LENGTH_SHORT).show()
+            context.safeStart(app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } else {
+            Toast.makeText(context, "Appli introuvable", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     fun openSystemSettings(context: Context) =
         context.safeStart(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 

@@ -11,10 +11,15 @@ object HomeDefaults {
 
     class AppMatch(val packages: List<String> = emptyList(), val labels: List<String> = emptyList())
 
+    val KICK = AppMatch(labels = listOf("Kick"))
+
+    /** Channel opened in Kick by the 🥵 button of the header. */
+    const val KICK_CHANNEL_URL = "https://kick.com/ryu7z"
+
     /** Pinned to Continue Watching, in this order, until the user pins, unpins or moves a pin. */
     val PINNED = listOf(
         AppMatch(packages = listOf("com.google.android.youtube.tv"), labels = listOf("YouTube")),
-        AppMatch(labels = listOf("Kick")),
+        KICK,
         // A player for video files (MP4…): the first one installed.
         AppMatch(
             packages = listOf(

@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +42,7 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 
 @Composable
 fun ClockHeader(
+    onOpenKickChannel: () -> Unit,
     onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -99,6 +102,10 @@ fun ClockHeader(
             )
         }
         Spacer(Modifier.weight(1f))
+        HeaderButton("Kick · ryu7z", onOpenKickChannel) {
+            Text("🥵", fontSize = 20.sp)
+        }
+        Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.SortByAlpha, "Trier les applis", onSortApps)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Speaker, "Sortie audio", onOpenAudioOutput)
@@ -109,9 +116,16 @@ fun ClockHeader(
 
 @Composable
 private fun HeaderButton(icon: ImageVector, description: String, onClick: () -> Unit) {
+    HeaderButton(description, onClick) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun HeaderButton(description: String, onClick: () -> Unit, content: @Composable () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(44.dp),
+        modifier = Modifier.size(44.dp).semantics { contentDescription = description },
         colors = IconButtonDefaults.colors(
             containerColor = ToolkitColors.OnSurface.copy(alpha = 0.06f),
             contentColor = ToolkitColors.OnSurfaceMuted,
@@ -119,7 +133,7 @@ private fun HeaderButton(icon: ImageVector, description: String, onClick: () -> 
             focusedContentColor = ToolkitColors.Background,
         ),
     ) {
-        Icon(icon, contentDescription = description, modifier = Modifier.size(22.dp))
+        content()
     }
 }
 
