@@ -53,7 +53,7 @@ object AppActions {
         } else {
             Toast.makeText(
                 context,
-                "Turn on \"Toolkit\" in Settings › Accessibility for one-click force stop",
+                "Active « Toolkit » dans Paramètres › Accessibilité pour forcer l'arrêt en un clic",
                 Toast.LENGTH_LONG,
             ).show()
             openAppInfo(context, packageName)
@@ -64,9 +64,9 @@ object AppActions {
         try {
             startActivity(intent)
         } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, "Couldn't open that", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Impossible d'ouvrir cet écran", Toast.LENGTH_SHORT).show()
         } catch (_: SecurityException) {
-            Toast.makeText(this, "Not allowed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Action non autorisée", Toast.LENGTH_SHORT).show()
         }
     }
 }

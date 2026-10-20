@@ -38,21 +38,21 @@ fun SortAppsDialog(onDismiss: () -> Unit, onSortDefault: () -> Unit, onSortAlpha
                 .ignoreHeldSelectKey(),
         ) {
             Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp)) {
-                Text("Sort apps", style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
+                Text("Trier les applis", style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
                 Text(
-                    "Replaces your current order",
+                    "Remplace l'ordre actuel",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ToolkitColors.OnSurfaceMuted,
                 )
             }
             Column(Modifier.padding(12.dp)) {
                 ActionItem(
-                    "Streaming first",
-                    "HBO Max, Apple TV, Netflix… then A to Z",
+                    "Streaming d'abord",
+                    "YouTube, Kick, HBO Max, Apple TV… puis de A à Z",
                     onSortDefault,
                     Modifier.focusRequester(firstAction),
                 )
-                ActionItem("Alphabetical", "All apps from A to Z", onSortAlphabetical)
+                ActionItem("Ordre alphabétique", "Toutes les applis de A à Z", onSortAlphabetical)
             }
         }
     }

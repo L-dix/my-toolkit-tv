@@ -66,24 +66,24 @@ fun AppActionsDialog(
             ) {
                 if (isHidden) {
                     ActionItem(
-                        "Unhide", "Show on the home screen again",
+                        "Afficher", "Remettre sur l'écran d'accueil",
                         onToggleHidden, Modifier.focusRequester(firstAction),
                     )
                 } else {
-                    ActionItem("Move", "Reorder on the home screen", onMove, Modifier.focusRequester(firstAction))
-                    ActionItem("Hide", "Move to More Apps", onToggleHidden)
+                    ActionItem("Déplacer", "Changer sa place sur l'écran d'accueil", onMove, Modifier.focusRequester(firstAction))
+                    ActionItem("Masquer", "Ranger dans Plus d'applis", onToggleHidden)
                 }
                 ActionItem(
-                    if (isPinned) "Unpin" else "Pin to Continue Watching",
-                    if (isPinned) "Take it out of Continue Watching" else "Add a shortcut above your apps",
+                    if (isPinned) "Désépingler" else "Épingler dans Continuer à regarder",
+                    if (isPinned) "Retirer de Continuer à regarder" else "Ajouter un raccourci au-dessus des applis",
                     onTogglePinned,
                 )
-                ActionItem("App info", "Storage, permissions & more", onAppInfo)
-                ActionItem("Force stop", "Close the app completely", onForceStop)
+                ActionItem("Infos sur l'appli", "Stockage, autorisations…", onAppInfo)
+                ActionItem("Forcer l'arrêt", "Fermer complètement l'appli", onForceStop)
                 if (app.canUninstall) {
                     ActionItem(
-                        if (app.isUpdatedSystemApp) "Uninstall updates" else "Uninstall",
-                        if (app.isUpdatedSystemApp) "Restore the factory version" else "Remove from this TV",
+                        if (app.isUpdatedSystemApp) "Désinstaller les mises à jour" else "Désinstaller",
+                        if (app.isUpdatedSystemApp) "Revenir à la version d'origine" else "Supprimer de cette TV",
                         onUninstall,
                         danger = true,
                     )

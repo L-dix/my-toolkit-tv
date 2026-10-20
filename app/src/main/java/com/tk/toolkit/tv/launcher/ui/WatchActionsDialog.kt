@@ -64,11 +64,11 @@ fun WatchActionsDialog(app: LauncherApp, onDismiss: () -> Unit, onMove: () -> Un
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text("Continue Watching", style = MaterialTheme.typography.bodyMedium, color = ToolkitColors.OnSurfaceMuted)
+                Text("Continuer à regarder", style = MaterialTheme.typography.bodyMedium, color = ToolkitColors.OnSurfaceMuted)
             }
             Column(Modifier.padding(12.dp)) {
-                ActionItem("Move", "Reorder in Continue Watching", onMove, Modifier.focusRequester(firstAction))
-                ActionItem("Unpin", "Take it out of Continue Watching", onRemove, danger = true)
+                ActionItem("Déplacer", "Changer sa place dans Continuer à regarder", onMove, Modifier.focusRequester(firstAction))
+                ActionItem("Désépingler", "Retirer de Continuer à regarder", onRemove, danger = true)
             }
         }
     }

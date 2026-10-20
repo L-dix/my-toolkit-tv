@@ -93,7 +93,7 @@ class ToolkitAccessibilityService : AccessibilityService() {
                 val node = root.findByText(FORCE_STOP_LABELS) ?: return
                 val clickable = node.clickableAncestor() ?: return
                 if (!clickable.isEnabled || !node.isEnabled) {
-                    finish("Already stopped")
+                    finish("Déjà arrêtée")
                 } else if (clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                     step = Step.Confirm
                 }
@@ -102,7 +102,7 @@ class ToolkitAccessibilityService : AccessibilityService() {
                 val node = root.findByText(CONFIRM_LABELS) ?: return
                 val clickable = node.clickableAncestor() ?: return
                 if (clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                    finish("Force stopped")
+                    finish("Arrêt forcé")
                 }
             }
         }
@@ -123,7 +123,7 @@ class ToolkitAccessibilityService : AccessibilityService() {
             .filter { it.packageName != packageName && it.packageName !in SETTINGS_PACKAGES }
         val stock = candidates.firstOrNull { it.packageName == STOCK_LAUNCHER } ?: candidates.firstOrNull()
         if (stock == null) {
-            Toast.makeText(this, "Couldn't find the Google TV home", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Accueil Google TV introuvable", Toast.LENGTH_SHORT).show()
             return
         }
         stockHomeAllowed = true
@@ -131,10 +131,10 @@ class ToolkitAccessibilityService : AccessibilityService() {
             startActivity(
                 Intent(home).setClassName(stock.packageName, stock.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-            Toast.makeText(this, "Google TV home · press Home to come back to Toolkit", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Accueil Google TV · appuie sur Home pour revenir à Toolkit", Toast.LENGTH_LONG).show()
         } catch (_: ActivityNotFoundException) {
             stockHomeAllowed = false
-            Toast.makeText(this, "Couldn't open the Google TV home", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Impossible d'ouvrir l'accueil Google TV", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -144,7 +144,7 @@ class ToolkitAccessibilityService : AccessibilityService() {
         target = null
         if (!wasRunning) return
         handler.postDelayed({ openToolkit() }, 250)
-        Toast.makeText(this, message ?: "Couldn't force stop — try from App info", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, message ?: "Échec de l'arrêt forcé : essaie depuis Infos sur l'appli", Toast.LENGTH_SHORT).show()
     }
 
     private fun AccessibilityNodeInfo.findByText(labels: List<String>): AccessibilityNodeInfo? {

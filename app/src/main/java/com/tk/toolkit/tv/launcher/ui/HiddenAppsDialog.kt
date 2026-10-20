@@ -63,13 +63,13 @@ fun HiddenAppsDialog(
                 .padding(top = 28.dp),
         ) {
             Text(
-                "More Apps",
+                "Plus d'applis",
                 style = MaterialTheme.typography.titleLarge,
                 color = ToolkitColors.OnSurface,
                 modifier = Modifier.padding(horizontal = 28.dp),
             )
             Text(
-                "Hidden from your home screen · long press to unhide",
+                "Masquées sur l'écran d'accueil · appui long pour les réafficher",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ToolkitColors.OnSurfaceMuted,
                 modifier = Modifier.padding(top = 4.dp, start = 28.dp, end = 28.dp),

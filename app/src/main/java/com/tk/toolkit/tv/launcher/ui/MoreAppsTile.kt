@@ -87,7 +87,7 @@ fun MoreAppsTile(
                         modifier = Modifier.size(28.dp),
                     )
                     Text(
-                        "More Apps",
+                        "Plus d'applis",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ToolkitColors.OnSurface,
                     )

@@ -101,13 +101,13 @@ fun ClockHeader(
             )
         }
         Spacer(Modifier.weight(1f))
-        HeaderButton(Icons.Outlined.SortByAlpha, "Sort apps", onSortApps)
+        HeaderButton(Icons.Outlined.SortByAlpha, "Trier les applis", onSortApps)
         Spacer(Modifier.width(12.dp))
-        HeaderButton(Icons.Outlined.Speaker, "Audio output", onOpenAudioOutput)
+        HeaderButton(Icons.Outlined.Speaker, "Sortie audio", onOpenAudioOutput)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.WbIridescent, "Ambilight", onOpenAmbilight)
         Spacer(Modifier.width(12.dp))
-        HeaderButton(Icons.Outlined.Settings, "Settings", onOpenSettings)
+        HeaderButton(Icons.Outlined.Settings, "Paramètres", onOpenSettings)
     }
 }
 

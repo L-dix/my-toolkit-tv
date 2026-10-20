@@ -137,7 +137,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                     // Hidden when nothing is pinned.
                     if (pinnedApps.isNotEmpty()) {
                         item(key = WATCH_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
-                            SectionTitle("Continue Watching", accentBar = true)
+                            SectionTitle("Continuer à regarder", accentBar = true)
                         }
                         itemsIndexed(pinnedApps, key = { _, app -> ContinueWatching.key(app.packageName) }) { index, app ->
                             val key = ContinueWatching.key(app.packageName)
@@ -173,7 +173,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                     }
                     // Full width, so it also starts the apps on their own row.
                     item(key = APPS_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
-                        SectionTitle("Apps", accentBar = false)
+                        SectionTitle("Applications", accentBar = false)
                     }
                     itemsIndexed(state.apps, key = { _, app -> app.packageName }) { index, app ->
                         val isMoving = app.packageName == state.movingKey
@@ -306,7 +306,7 @@ private fun SectionTitle(text: String, accentBar: Boolean) {
 private fun MoveHint() {
     val shape = RoundedCornerShape(50)
     Text(
-        "Use the arrows to move  ·  Press OK to drop",
+        "Flèches pour déplacer  ·  OK pour valider",
         style = MaterialTheme.typography.bodyMedium,
         color = ToolkitColors.OnSurface,
         modifier = Modifier
