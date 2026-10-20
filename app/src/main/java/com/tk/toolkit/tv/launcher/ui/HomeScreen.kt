@@ -45,6 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -59,17 +62,25 @@ import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val COLUMNS = 5
 private const val MORE_APPS_KEY = "toolkit:more-apps"
 private const val WATCH_TITLE_KEY = "toolkit:continue-watching-title"
 private const val APPS_TITLE_KEY = "toolkit:apps-title"
+private const val RAINBOW_HOLD_MS = 4_000L
+
+/** The pending "held long enough" timer of the rainbow easter egg. */
+private class HoldTimer(var job: Job? = null)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val rainbow by viewModel.rainbow.collectAsStateWithLifecycle()
+    val rainbowHold = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
@@ -111,7 +122,26 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         requesterFor(target).requestFocusWhenReady()
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // Easter egg: holding 2 for 4 seconds turns the rainbow border on or off.
+    val rainbowKey = Modifier.onPreviewKeyEvent { event ->
+        val code = event.nativeKeyEvent.keyCode
+        if (code != android.view.KeyEvent.KEYCODE_2 && code != android.view.KeyEvent.KEYCODE_NUMPAD_2) {
+            return@onPreviewKeyEvent false
+        }
+        when (event.type) {
+            KeyEventType.KeyDown -> if (event.nativeKeyEvent.repeatCount == 0) {
+                rainbowHold.job?.cancel()
+                rainbowHold.job = scope.launch {
+                    delay(RAINBOW_HOLD_MS)
+                    viewModel.toggleRainbow()
+                }
+            }
+            KeyEventType.KeyUp -> rainbowHold.job?.cancel()
+        }
+        true
+    }
+
+    Box(Modifier.fillMaxSize().then(rainbowKey)) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
                 onSortApps = { if (state.movingKey == null) showSort = true },
@@ -216,6 +246,8 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                 }
             }
         }
+
+        if (rainbow) RainbowBorder()
 
         AnimatedVisibility(
             visible = state.movingKey != null,

@@ -37,6 +37,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _state = MutableStateFlow(LauncherState())
     val state: StateFlow<LauncherState> = _state.asStateFlow()
 
+    private val _rainbow = MutableStateFlow(prefs.rainbowBorder)
+
+    /** Easter egg: rainbow border around the home screen, toggled by holding 2 for 4 seconds. */
+    val rainbow: StateFlow<Boolean> = _rainbow.asStateFlow()
+
     private var refreshJob: Job? = null
     private val refreshDispatcher = Dispatchers.IO.limitedParallelism(1)
 
@@ -76,6 +81,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun resplit() = _state.update { current ->
         split(prefs.sort(current.apps + current.hiddenApps))
             .copy(loaded = current.loaded, movingKey = current.movingKey)
+    }
+
+    fun toggleRainbow() {
+        val on = !_rainbow.value
+        _rainbow.value = on
+        prefs.rainbowBorder = on
     }
 
     fun launchIntent(app: LauncherApp) = repository.launchIntent(app)

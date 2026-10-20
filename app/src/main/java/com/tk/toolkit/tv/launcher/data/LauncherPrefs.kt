@@ -33,6 +33,11 @@ class LauncherPrefs(context: Context) {
         prefs.edit { putString(KEY_PINNED, packages.joinToString("\n")) }
     }
 
+    /** Easter egg: the rainbow border around the home screen. */
+    var rainbowBorder: Boolean
+        get() = prefs.getBoolean(KEY_RAINBOW, false)
+        set(value) = prefs.edit { putBoolean(KEY_RAINBOW, value) }
+
     /**
      * Apps in saved order first, then any apps not yet ordered: those in [HomeDefaults.FIRST_APPS]
      * in that order, then the rest alphabetically.
@@ -53,5 +58,6 @@ class LauncherPrefs(context: Context) {
         const val KEY_ORDER = "order"
         const val KEY_HIDDEN = "hidden"
         const val KEY_PINNED = "pinned"
+        const val KEY_RAINBOW = "rainbow_border"
     }
 }
