@@ -17,6 +17,14 @@ class AppRepository(private val context: Context) {
 
     private val pm = context.packageManager
 
+    // Bitmaps are rasterized at roughly their on-screen pixel size, which depends on the
+    // resolution the TV renders its UI at (1080p on most Google TVs, 2160p on some 4K sets).
+    // A focused tile is about a fifth of the screen width; its icon about a fifteenth.
+    private val screenPx = context.resources.displayMetrics.let { maxOf(it.widthPixels, it.heightPixels) }
+    private val bannerW = (screenPx / 5).coerceAtLeast(MIN_BANNER_W)
+    private val bannerH = bannerW * 9 / 16
+    private val iconPx = (screenPx / 15).coerceAtLeast(MIN_ICON_PX)
+
     /** Loaded apps by package, reused while the package hasn't been updated. */
     private val cache = HashMap<String, LauncherApp>()
 
@@ -50,7 +58,7 @@ class AppRepository(private val context: Context) {
         val activity = info.activityInfo
         val appInfo = activity.applicationInfo
         val banner = activity.loadBanner(pm) ?: appInfo.loadBanner(pm)
-        val iconBitmap = info.loadIcon(pm).toSafeBitmap(ICON_PX, ICON_PX)
+        val iconBitmap = info.loadIcon(pm).toSafeBitmap(iconPx, iconPx)
         return LauncherApp(
             packageName = activity.packageName,
             component = ComponentName(activity.packageName, activity.name),
@@ -58,7 +66,7 @@ class AppRepository(private val context: Context) {
             isLeanback = isLeanback,
             isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
             isUpdatedSystemApp = appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0,
-            banner = banner?.toSafeBitmap(BANNER_W, BANNER_H)?.asImageBitmap(),
+            banner = banner?.toSafeBitmap(bannerW, bannerH)?.asImageBitmap(),
             icon = iconBitmap.asImageBitmap(),
             accent = iconBitmap.dominantColor(),
             lastUpdateTime = lastUpdateTime,
@@ -94,9 +102,8 @@ class AppRepository(private val context: Context) {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
 
     private companion object {
-        // Tiles are ~154dp wide at 2x density; sized for the focused (scaled-up) state.
-        const val ICON_PX = 128
-        const val BANNER_W = 352
-        const val BANNER_H = 198
+        // Tuned for a 1080p UI; never rasterize smaller than this.
+        const val MIN_ICON_PX = 128
+        const val MIN_BANNER_W = 352
     }
 }
