@@ -45,7 +45,8 @@ fun RainbowBorder(modifier: Modifier = Modifier) {
         modifier
             .fillMaxSize()
             .drawWithCache {
-                val shader = SweepGradientShader(center, RainbowColors)
+                val middle = Offset(size.width / 2, size.height / 2)
+                val shader = SweepGradientShader(middle, RainbowColors)
                 val brush = ShaderBrush(shader)
                 val matrix = Matrix()
                 val line = 5.dp.toPx()
@@ -54,7 +55,7 @@ fun RainbowBorder(modifier: Modifier = Modifier) {
                 onDrawBehind {
                     // Turning the gradient rather than the outline keeps the frame square to the
                     // screen; reading the angle here only redraws, it doesn't recompose.
-                    matrix.setRotate(angle, center.x, center.y)
+                    matrix.setRotate(angle, middle.x, middle.y)
                     shader.setLocalMatrix(matrix)
                     drawRoundRect(
                         brush,
