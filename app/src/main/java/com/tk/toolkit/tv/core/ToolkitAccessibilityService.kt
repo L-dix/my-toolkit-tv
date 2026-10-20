@@ -1,6 +1,7 @@
 package com.tk.toolkit.tv.core
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -14,7 +15,8 @@ import com.tk.toolkit.tv.launcher.data.AppActions
 /**
  * System-level helpers that need an accessibility service:
  * - Sends the Home button (and the stock Google TV home screen) to Toolkit, so it works as
- *   the launcher without disabling the stock one.
+ *   the launcher without disabling the stock one. Holding Home opens the quick settings, and
+ *   holding it for 4 seconds opens the stock home until Home is pressed again.
  * - Drives the system App info screen to press "Force stop" → "OK" after [forceStop].
  */
 class ToolkitAccessibilityService : AccessibilityService() {
@@ -25,6 +27,14 @@ class ToolkitAccessibilityService : AccessibilityService() {
     private var target: String? = null
     private var step = Step.PressForceStop
     private val timeout = Runnable { finish(null) }
+
+    /** Set while the user asked for the stock home, so it isn't sent back to Toolkit. */
+    private var stockHomeAllowed = false
+    private var homeHeldForStock = false
+    private val openStockHomeAfterHold = Runnable {
+        homeHeldForStock = true
+        openStockHome()
+    }
 
     override fun onServiceConnected() {
         instance = this
@@ -50,9 +60,19 @@ class ToolkitAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return false
-        if (event.action == KeyEvent.ACTION_UP) {
-            val held = event.eventTime - event.downTime
-            if (held >= LONG_PRESS_MS) performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) else openToolkit()
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
+                // Fires while still held, so the stock home shows up without waiting for release.
+                homeHeldForStock = false
+                handler.postDelayed(openStockHomeAfterHold, STOCK_HOME_HOLD_MS)
+            }
+            KeyEvent.ACTION_UP -> {
+                handler.removeCallbacks(openStockHomeAfterHold)
+                if (!homeHeldForStock) {
+                    val held = event.eventTime - event.downTime
+                    if (held >= LONG_PRESS_MS) performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) else openToolkit()
+                }
+            }
         }
         return true
     }
@@ -63,7 +83,7 @@ class ToolkitAccessibilityService : AccessibilityService() {
             event.packageName == STOCK_LAUNCHER &&
             event.className?.toString() == STOCK_HOME_ACTIVITY
         ) {
-            openToolkit()
+            if (!stockHomeAllowed) openToolkit()
             return
         }
         if (target == null) return
@@ -89,10 +109,33 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
 
     private fun openToolkit() {
+        stockHomeAllowed = false
         startActivity(
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         )
+    }
+
+    /** The system's other home screen (Google TV's), opened on purpose, so it's left on screen. */
+    private fun openStockHome() {
+        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val candidates = packageManager.queryIntentActivities(home, 0).map { it.activityInfo }
+            .filter { it.packageName != packageName && it.packageName !in SETTINGS_PACKAGES }
+        val stock = candidates.firstOrNull { it.packageName == STOCK_LAUNCHER } ?: candidates.firstOrNull()
+        if (stock == null) {
+            Toast.makeText(this, "Couldn't find the Google TV home", Toast.LENGTH_SHORT).show()
+            return
+        }
+        stockHomeAllowed = true
+        try {
+            startActivity(
+                Intent(home).setClassName(stock.packageName, stock.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            Toast.makeText(this, "Google TV home · press Home to come back to Toolkit", Toast.LENGTH_LONG).show()
+        } catch (_: ActivityNotFoundException) {
+            stockHomeAllowed = false
+            Toast.makeText(this, "Couldn't open the Google TV home", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun finish(message: String?) {
@@ -126,8 +169,12 @@ class ToolkitAccessibilityService : AccessibilityService() {
 
         private const val TIMEOUT_MS = 6_000L
         private const val LONG_PRESS_MS = 600L
+        private const val STOCK_HOME_HOLD_MS = 4_000L
         private const val STOCK_LAUNCHER = "com.google.android.apps.tv.launcherx"
         private const val STOCK_HOME_ACTIVITY = "com.google.android.apps.tv.launcherx.home.HomeActivity"
+
+        /** Settings' "FallbackHome" screens, which also answer the Home intent. */
+        private val SETTINGS_PACKAGES = setOf("com.android.settings", "com.android.tv.settings")
         // English and French system Settings (straight and typographic apostrophes).
         private val FORCE_STOP_LABELS = listOf("Force stop", "Forcer l'arrêt", "Forcer l’arrêt")
         private val CONFIRM_LABELS = listOf("OK")
