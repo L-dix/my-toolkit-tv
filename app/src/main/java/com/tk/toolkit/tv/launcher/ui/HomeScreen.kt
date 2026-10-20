@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +59,7 @@ import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.WatchItem
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
+import kotlinx.coroutines.launch
 
 private const val COLUMNS = 5
 private const val MORE_APPS_KEY = "toolkit:more-apps"
@@ -70,6 +72,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
     val focusRequesters = remember { mutableMapOf<String, FocusRequester>() }
     fun requesterFor(key: String) = focusRequesters.getOrPut(key) { FocusRequester() }
 
@@ -143,6 +146,10 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                                 onFocused = {
                                     lastFocusedKey = item.key
                                     lastFocusedIndex = watchKeys.indexOf(item.key)
+                                    // The first row brings its section title into view too.
+                                    if (index < COLUMNS && gridState.canScrollBackward) {
+                                        scope.launch { gridState.animateScrollToItem(0) }
+                                    }
                                 },
                                 onClick = { if (state.movingKey == null) context.safeStart(item.intent()) },
                                 onLongClick = { if (state.movingKey == null) menuWatchItem = item },
