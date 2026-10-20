@@ -28,10 +28,12 @@ android {
     signingConfigs {
         if (releaseKeystore != null) {
             create("release") {
+                val password = System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 storeFile = releaseKeystore
-                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                storePassword = password
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                // A PKCS12 keystore has a single password for the store and its key.
+                keyPassword = password
             }
         }
     }

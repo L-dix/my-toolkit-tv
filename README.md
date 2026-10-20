@@ -64,14 +64,15 @@ Sur la TV :
 
 ### Signature des Releases (à faire une fois)
 
-Le workflow `.github/workflows/release.yml` signe l'APK avec une clé de release stable, stockée dans les secrets du dépôt : sans elle, chaque build aurait une clé différente et les mises à jour refuseraient de s'installer. Sur github.com (le navigateur du téléphone suffit) : dépôt › **Settings** › **Secrets and variables** › **Actions** › **New repository secret**, quatre fois :
+Le workflow `.github/workflows/release.yml` signe l'APK avec une clé de release stable, stockée dans les secrets du dépôt : sans elle, chaque build aurait une clé différente et les mises à jour refuseraient de s'installer. Sur github.com (le navigateur du téléphone suffit) : dépôt › **Settings** › **Secrets and variables** › **Actions** › **New repository secret**, trois fois :
 
 | Nom | Valeur |
 | --- | --- |
 | `ANDROID_KEYSTORE_BASE64` | le keystore (`.jks`) encodé en base64, sur une seule ligne |
 | `ANDROID_KEYSTORE_PASSWORD` | le mot de passe du keystore |
 | `ANDROID_KEY_ALIAS` | l'alias de la clé (`toolkit`) |
-| `ANDROID_KEY_PASSWORD` | le mot de passe de la clé (le même que celui du keystore) |
+
+Le keystore est au format PKCS12, qui n'a qu'un seul mot de passe : il sert aussi pour la clé.
 
 Puis onglet **Actions** › **Release APK** › **Run workflow** pour publier la première version. Sans ces secrets, le workflow compile quand même (pour vérifier le code) mais échoue sans rien publier.
 

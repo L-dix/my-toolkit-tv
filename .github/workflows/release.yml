@@ -46,13 +46,12 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
       - name: Stop if the signing secrets are missing
         if: env.HAS_KEYSTORE != 'true'
         run: |
-          echo "::error::Build OK, but no release published: add the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets (see README), then re-run this workflow."
+          echo "::error::Build OK, but no release published: add the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS secrets (see README), then re-run this workflow."
           exit 1
 
       - name: Publish GitHub Release
