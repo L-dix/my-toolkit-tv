@@ -30,7 +30,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.tk.toolkit.tv.ui.theme.Inter
+import com.tk.toolkit.tv.ui.theme.Heros
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -61,18 +61,17 @@ fun ClockHeader(
             Text(
                 clock.time,
                 style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = Inter,
+                    fontFamily = Heros,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 30.sp,
-                    letterSpacing = (-0.6).sp,
-                    // Tabular figures, so the time doesn't shift as the digits change.
-                    fontFeatureSettings = "tnum",
+                    letterSpacing = (-0.5).sp,
                     brush = Brush.verticalGradient(listOf(ToolkitColors.OnSurface, ToolkitColors.Accent)),
                 ),
             )
             clock.meridiem?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = Inter, fontSize = 13.sp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 13.sp),
                     color = ToolkitColors.OnSurfaceMuted,
                     modifier = Modifier.padding(start = 5.dp, bottom = 5.dp),
                 )
@@ -88,16 +87,16 @@ fun ClockHeader(
             Text(
                 clock.weekday.uppercase(),
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = Inter,
-                    fontWeight = FontWeight.Medium,
+                    fontFamily = Heros,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
-                    letterSpacing = 1.8.sp,
+                    letterSpacing = 1.5.sp,
                 ),
                 color = ToolkitColors.Accent,
             )
             Text(
                 clock.date,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Inter, fontSize = 14.sp, letterSpacing = 0.sp),
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
                 color = ToolkitColors.OnSurfaceMuted,
             )
         }

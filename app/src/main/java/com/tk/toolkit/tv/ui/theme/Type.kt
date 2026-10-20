@@ -9,13 +9,12 @@ import androidx.tv.material3.Typography
 import com.tk.toolkit.tv.R
 
 /**
- * Inter (SIL Open Font License, see third_party/inter), a free face close to Helvetica Neue,
- * used for the clock header. Subset to Latin characters to keep the APK small.
+ * Toolkit Heros, a subset of TeX Gyre Heros (a free Helvetica-like face, GUST Font License,
+ * see third_party/tex-gyre-heros), used for the clock header.
  */
-val Inter = FontFamily(
-    Font(R.font.inter_light, FontWeight.Light),
-    Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium),
+val Heros = FontFamily(
+    Font(R.font.toolkit_heros_regular, FontWeight.Normal),
+    Font(R.font.toolkit_heros_bold, FontWeight.Bold),
 )
 
 val Typography = Typography(
