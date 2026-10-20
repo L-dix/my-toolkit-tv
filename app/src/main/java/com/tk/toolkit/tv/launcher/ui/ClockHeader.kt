@@ -21,16 +21,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.tk.toolkit.tv.ui.theme.Inter
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private data class ClockText(val time: String, val meridiem: String?, val weekday: String, val date: String)
 
@@ -55,27 +59,45 @@ fun ClockHeader(
             Text(
                 clock.time,
                 style = MaterialTheme.typography.displaySmall.copy(
+                    fontFamily = Inter,
+                    fontSize = 30.sp,
+                    letterSpacing = (-0.6).sp,
+                    // Tabular figures, so the time doesn't shift as the digits change.
+                    fontFeatureSettings = "tnum",
                     brush = Brush.verticalGradient(listOf(ToolkitColors.OnSurface, ToolkitColors.Accent)),
                 ),
             )
             clock.meridiem?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = Inter, fontSize = 13.sp),
                     color = ToolkitColors.OnSurfaceMuted,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
+                    modifier = Modifier.padding(start = 5.dp, bottom = 5.dp),
                 )
             }
         }
         Spacer(
             Modifier
-                .padding(horizontal = 20.dp)
-                .size(width = 1.dp, height = 32.dp)
+                .padding(horizontal = 16.dp)
+                .size(width = 1.dp, height = 26.dp)
                 .background(ToolkitColors.OnSurface.copy(alpha = 0.15f)),
         )
         Column {
-            Text(clock.weekday.uppercase(), style = MaterialTheme.typography.labelLarge, color = ToolkitColors.Accent)
-            Text(clock.date, style = MaterialTheme.typography.bodyLarge, color = ToolkitColors.OnSurfaceMuted)
+            Text(
+                clock.weekday.uppercase(),
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 11.sp,
+                    letterSpacing = 1.8.sp,
+                ),
+                color = ToolkitColors.Accent,
+            )
+            Text(
+                clock.date,
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Inter, fontSize = 14.sp, letterSpacing = 0.sp),
+                color = ToolkitColors.OnSurfaceMuted,
+            )
         }
         Spacer(Modifier.weight(1f))
         HeaderButton(Icons.Outlined.Speaker, "Audio output", onOpenAudioOutput)
@@ -108,6 +130,7 @@ private fun clockText(is24Hour: Boolean): ClockText {
         time = now.format(DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm")),
         meridiem = if (is24Hour) null else now.format(DateTimeFormatter.ofPattern("a")).uppercase(),
         weekday = now.format(DateTimeFormatter.ofPattern("EEEE")),
-        date = now.format(DateTimeFormatter.ofPattern("MMMM d")),
+        // "October 20" in English, "20 octobre" in French.
+        date = now.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMMd"))),
     )
 }
