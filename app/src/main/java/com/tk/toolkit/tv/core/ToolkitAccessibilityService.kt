@@ -128,7 +128,8 @@ class ToolkitAccessibilityService : AccessibilityService() {
         private const val LONG_PRESS_MS = 600L
         private const val STOCK_LAUNCHER = "com.google.android.apps.tv.launcherx"
         private const val STOCK_HOME_ACTIVITY = "com.google.android.apps.tv.launcherx.home.HomeActivity"
-        private val FORCE_STOP_LABELS = listOf("Force stop")
+        // English and French system Settings (straight and typographic apostrophes).
+        private val FORCE_STOP_LABELS = listOf("Force stop", "Forcer l'arrêt", "Forcer l’arrêt")
         private val CONFIRM_LABELS = listOf("OK")
     }
 }
