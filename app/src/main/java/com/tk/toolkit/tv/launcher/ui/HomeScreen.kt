@@ -56,8 +56,8 @@ import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.LauncherViewModel
 import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
+import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.LauncherApp
-import com.tk.toolkit.tv.launcher.data.WatchItem
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.launch
 
@@ -77,7 +77,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     fun requesterFor(key: String) = focusRequesters.getOrPut(key) { FocusRequester() }
 
     var menuApp by remember { mutableStateOf<LauncherApp?>(null) }
-    var menuWatchItem by remember { mutableStateOf<WatchItem?>(null) }
+    var menuPinnedApp by remember { mutableStateOf<LauncherApp?>(null) }
     var showHidden by remember { mutableStateOf(false) }
     var lastFocusedKey by rememberSaveable { mutableStateOf<String?>(null) }
     var lastFocusedIndex by rememberSaveable { mutableStateOf(0) }
@@ -85,8 +85,8 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var initialFocusPlaced by remember { mutableStateOf(false) }
 
     val scrollSpec = with(LocalDensity.current) { remember { minimalScrollSpec(28.dp.toPx()) } }
-    val watchItems = state.watchItems
-    val watchKeys = watchItems.map { it.key }
+    val pinnedApps = state.pinnedApps
+    val watchKeys = pinnedApps.map { ContinueWatching.key(it.packageName) }
     val gridKeys = watchKeys + state.apps.map { it.packageName } +
         if (state.hiddenApps.isNotEmpty()) listOf(MORE_APPS_KEY) else emptyList()
 
@@ -130,29 +130,33 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                         .fillMaxSize()
                         .verticalFadeEdges(top = 20.dp, bottom = 28.dp),
                 ) {
-                    if (watchItems.isNotEmpty()) {
+                    // Hidden until an app is pinned from its menu.
+                    if (pinnedApps.isNotEmpty()) {
                         item(key = WATCH_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
                             SectionTitle("Continue Watching", accentBar = true)
                         }
-                        itemsIndexed(watchItems, key = { _, item -> item.key }) { index, item ->
-                            val isMoving = item.key == state.movingKey
-                            WatchTile(
-                                item = item,
+                        itemsIndexed(pinnedApps, key = { _, app -> ContinueWatching.key(app.packageName) }) { index, app ->
+                            val key = ContinueWatching.key(app.packageName)
+                            val isMoving = key == state.movingKey
+                            AppTile(
+                                app = app,
                                 index = index,
                                 columns = COLUMNS,
                                 isMoving = isMoving,
                                 dimmed = state.movingKey != null && !isMoving,
-                                focusRequester = requesterFor(item.key),
+                                focusRequester = requesterFor(key),
                                 onFocused = {
-                                    lastFocusedKey = item.key
-                                    lastFocusedIndex = watchKeys.indexOf(item.key)
+                                    lastFocusedKey = key
+                                    lastFocusedIndex = watchKeys.indexOf(key)
                                     // The first row brings its section title into view too.
                                     if (index < COLUMNS && gridState.canScrollBackward) {
                                         scope.launch { gridState.animateScrollToItem(0) }
                                     }
                                 },
-                                onClick = { if (state.movingKey == null) context.safeStart(item.intent()) },
-                                onLongClick = { if (state.movingKey == null) menuWatchItem = item },
+                                onClick = {
+                                    if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
+                                },
+                                onLongClick = { if (state.movingKey == null) menuPinnedApp = app },
                                 onMoveBy = viewModel::moveBy,
                                 onDrop = viewModel::endMove,
                                 modifier = Modifier.animateItem(
@@ -235,24 +239,27 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         )
     }
 
-    menuWatchItem?.let { item ->
+    menuPinnedApp?.let { app ->
         WatchActionsDialog(
-            item = item,
-            onDismiss = { menuWatchItem = null },
-            onMove = { menuWatchItem = null; viewModel.startMove(item.key) },
-            onRemove = { menuWatchItem = null; viewModel.removeWatchItem(item) },
+            app = app,
+            onDismiss = { menuPinnedApp = null },
+            onMove = { menuPinnedApp = null; viewModel.startMove(ContinueWatching.key(app.packageName)) },
+            onRemove = { menuPinnedApp = null; viewModel.setPinned(app.packageName, false) },
         )
     }
 
     menuApp?.let { app ->
         val isHidden = state.hiddenApps.any { it.packageName == app.packageName }
+        val isPinned = state.pinnedApps.any { it.packageName == app.packageName }
         val dismiss = { menuApp = null }
         AppActionsDialog(
             app = app,
             isHidden = isHidden,
+            isPinned = isPinned,
             onDismiss = dismiss,
             onMove = { dismiss(); viewModel.startMove(app.packageName) },
             onToggleHidden = { dismiss(); viewModel.setHidden(app.packageName, !isHidden) },
+            onTogglePinned = { dismiss(); viewModel.setPinned(app.packageName, !isPinned) },
             onAppInfo = { dismiss(); AppActions.openAppInfo(context, app.packageName) },
             onForceStop = { dismiss(); AppActions.forceStop(context, app.packageName) },
             onUninstall = { dismiss(); AppActions.uninstall(context, app.packageName) },

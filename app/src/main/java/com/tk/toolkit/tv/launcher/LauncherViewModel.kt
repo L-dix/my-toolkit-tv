@@ -7,7 +7,6 @@ import com.tk.toolkit.tv.launcher.data.AppRepository
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.LauncherPrefs
-import com.tk.toolkit.tv.launcher.data.WatchItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,10 +21,10 @@ data class LauncherState(
     val apps: List<LauncherApp> = emptyList(),
     /** Apps the user hid, shown under "More Apps", alphabetically. */
     val hiddenApps: List<LauncherApp> = emptyList(),
-    /** Continue Watching items whose app is installed and that the user hasn't removed. */
-    val watchItems: List<WatchItem> = emptyList(),
+    /** Installed apps pinned to Continue Watching, in the user's order. */
+    val pinnedApps: List<LauncherApp> = emptyList(),
     val loaded: Boolean = false,
-    /** App package or Continue Watching key currently being repositioned, if any. */
+    /** App package or pinned app's Continue Watching key currently being repositioned, if any. */
     val movingKey: String? = null,
 )
 
@@ -48,11 +47,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             val all = withContext(refreshDispatcher) { prefs.sort(repository.loadApps()) }
-            val watch = withContext(refreshDispatcher) { visibleWatchItems() }
             _state.update { current ->
                 // Don't reshuffle under the user while they're moving something.
                 if (current.movingKey != null) current
-                else split(all).copy(loaded = true, watchItems = watch)
+                else split(all).copy(loaded = true)
             }
         }
     }
@@ -60,24 +58,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun split(all: List<LauncherApp>): LauncherState {
         val hidden = prefs.hiddenPackages()
         val (hiddenApps, visible) = all.partition { it.packageName in hidden }
-        return LauncherState(apps = visible, hiddenApps = hiddenApps.sortedBy { it.label.lowercase() })
+        // Pinned apps stay pinned while uninstalled, and come back if reinstalled.
+        val byPackage = all.associateBy { it.packageName }
+        return LauncherState(
+            apps = visible,
+            hiddenApps = hiddenApps.sortedBy { it.label.lowercase() },
+            pinnedApps = prefs.pinnedPackages().mapNotNull { byPackage[it] },
+        )
     }
 
-    private fun visibleWatchItems(): List<WatchItem> {
-        val removed = prefs.removedWatchItems()
-        return prefs.sortWatchItems(ContinueWatching.items)
-            .filter { it.key !in removed && repository.isInstalled(it.packageName) }
-    }
-
-    fun removeWatchItem(item: WatchItem) {
-        if (!item.removable) return
-        prefs.removeWatchItem(item.key)
-        _state.update { current -> current.copy(watchItems = current.watchItems - item) }
+    /** Re-splits the loaded apps after a hide or pin change, keeping the rest of the state. */
+    private fun resplit() = _state.update { current ->
+        split(prefs.sort(current.apps + current.hiddenApps))
+            .copy(loaded = current.loaded, movingKey = current.movingKey)
     }
 
     fun launchIntent(app: LauncherApp) = repository.launchIntent(app)
 
-    /** Starts moving an app (by package) or a Continue Watching item (by key). */
+    /** Starts moving an app (by package) or a pinned app (by its Continue Watching key). */
     fun startMove(key: String) = _state.update { it.copy(movingKey = key) }
 
     /** Shifts the moving tile by [delta] positions within its own section, clamped to its bounds. */
@@ -85,8 +83,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val key = current.movingKey ?: return@update current
         val appIndex = current.apps.indexOfFirst { it.packageName == key }
         if (appIndex >= 0) return@update current.copy(apps = current.apps.shifted(appIndex, delta))
-        val watchIndex = current.watchItems.indexOfFirst { it.key == key }
-        if (watchIndex >= 0) return@update current.copy(watchItems = current.watchItems.shifted(watchIndex, delta))
+        val pinIndex = current.pinnedApps.indexOfFirst { ContinueWatching.key(it.packageName) == key }
+        if (pinIndex >= 0) return@update current.copy(pinnedApps = current.pinnedApps.shifted(pinIndex, delta))
         current
     }
 
@@ -103,17 +101,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setHidden(packageName: String, hidden: Boolean) {
         prefs.setHidden(packageName, hidden)
         // Unhidden apps return to their saved position.
-        _state.update { current ->
-            split(prefs.sort(current.apps + current.hiddenApps))
-                .copy(loaded = current.loaded, movingKey = current.movingKey, watchItems = current.watchItems)
-        }
+        resplit()
+    }
+
+    fun setPinned(packageName: String, pinned: Boolean) {
+        prefs.setPinned(packageName, pinned)
+        resplit()
     }
 
     private fun saveOrder() {
         val current = _state.value
         prefs.saveOrder((current.apps + current.hiddenApps).map { it.packageName })
-        // Keeps removed and not-installed items' positions after the visible ones.
-        val visible = current.watchItems.map { it.key }
-        prefs.saveWatchOrder(visible + prefs.sortWatchItems(ContinueWatching.items).map { it.key }.filter { it !in visible })
+        // Keeps pinned apps that aren't installed right now after the visible ones.
+        val visible = current.pinnedApps.map { it.packageName }
+        prefs.savePinned(visible + prefs.pinnedPackages().filter { it !in visible })
     }
 }

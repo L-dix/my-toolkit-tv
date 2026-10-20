@@ -23,14 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.tk.toolkit.tv.launcher.data.WatchItem
+import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-/** Long-press menu for a Continue Watching item; styled like the app menu. */
+/** Long-press menu for an app pinned to Continue Watching; styled like the app menu. */
 @Composable
-fun WatchActionsDialog(item: WatchItem, onDismiss: () -> Unit, onMove: () -> Unit, onRemove: () -> Unit) {
+fun WatchActionsDialog(app: LauncherApp, onDismiss: () -> Unit, onMove: () -> Unit, onRemove: () -> Unit) {
     val firstAction = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstAction.requestFocus() } }
 
@@ -46,7 +46,7 @@ fun WatchActionsDialog(item: WatchItem, onDismiss: () -> Unit, onMove: () -> Uni
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(item.glow.copy(alpha = 0.24f), item.glow.copy(alpha = 0.05f))))
+                    .background(Brush.verticalGradient(listOf(app.accent.copy(alpha = 0.24f), app.accent.copy(alpha = 0.05f))))
                     .drawBehind {
                         drawLine(
                             Color.White.copy(alpha = 0.1f),
@@ -58,7 +58,7 @@ fun WatchActionsDialog(item: WatchItem, onDismiss: () -> Unit, onMove: () -> Uni
                     .padding(horizontal = 28.dp, vertical = 22.dp),
             ) {
                 Text(
-                    item.title,
+                    app.label,
                     style = MaterialTheme.typography.headlineSmall,
                     color = ToolkitColors.OnSurface,
                     maxLines = 1,
@@ -68,7 +68,7 @@ fun WatchActionsDialog(item: WatchItem, onDismiss: () -> Unit, onMove: () -> Uni
             }
             Column(Modifier.padding(12.dp)) {
                 ActionItem("Move", "Reorder in Continue Watching", onMove, Modifier.focusRequester(firstAction))
-                if (item.removable) ActionItem("Remove", "Take it off the home screen", onRemove, danger = true)
+                ActionItem("Unpin", "Take it out of Continue Watching", onRemove, danger = true)
             }
         }
     }

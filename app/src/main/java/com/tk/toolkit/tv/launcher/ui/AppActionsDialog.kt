@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,9 +37,11 @@ private val PanelShape = RoundedCornerShape(24.dp)
 fun AppActionsDialog(
     app: LauncherApp,
     isHidden: Boolean,
+    isPinned: Boolean,
     onDismiss: () -> Unit,
     onMove: () -> Unit,
     onToggleHidden: () -> Unit,
+    onTogglePinned: () -> Unit,
     onAppInfo: () -> Unit,
     onForceStop: () -> Unit,
     onUninstall: () -> Unit,
@@ -55,7 +59,11 @@ fun AppActionsDialog(
                 .ignoreHeldSelectKey(),
         ) {
             AppSummary(app)
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Scrolls if the actions ever outgrow the screen's 540dp height.
+            Column(
+                Modifier.verticalScroll(rememberScrollState()).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 if (isHidden) {
                     ActionItem(
                         "Unhide", "Show on the home screen again",
@@ -65,6 +73,11 @@ fun AppActionsDialog(
                     ActionItem("Move", "Reorder on the home screen", onMove, Modifier.focusRequester(firstAction))
                     ActionItem("Hide", "Move to More Apps", onToggleHidden)
                 }
+                ActionItem(
+                    if (isPinned) "Unpin" else "Pin to Continue Watching",
+                    if (isPinned) "Take it out of Continue Watching" else "Add a shortcut above your apps",
+                    onTogglePinned,
+                )
                 ActionItem("App info", "Storage, permissions & more", onAppInfo)
                 ActionItem("Force stop", "Close the app completely", onForceStop)
                 if (app.canUninstall) {
