@@ -6,8 +6,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
 object ToolkitColors {
-    val Background = Color(0xFF07080C)
-    val GlowA = Color(0xFF3B3FD8)
+    val Background = Color.Black
     val GlowB = Color(0xFF0E8F8A)
     val Surface = Color(0xFF14161D)
     val SurfaceRaised = Color(0xFF1C1F28)

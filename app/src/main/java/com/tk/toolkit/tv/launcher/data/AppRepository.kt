@@ -76,7 +76,10 @@ class AppRepository(private val context: Context) {
     /** Rasterizes at exactly [w]x[h], roughly the on-screen size, to keep drawing cheap. */
     private fun Drawable.toSafeBitmap(w: Int, h: Int): Bitmap = toBitmap(w, h)
 
-    /** Average of the icon's opaque pixels, weighted toward saturated ones. */
+    /**
+     * Average of the icon's opaque pixels, weighted toward saturated ones. Icons with no real
+     * color (white, grey or black logos) get a deep red instead.
+     */
     private fun Bitmap.dominantColor(): Color {
         val small = scale(24, 24, filter = true)
         var r = 0f; var g = 0f; var b = 0f; var total = 0f
@@ -91,8 +94,12 @@ class AppRepository(private val context: Context) {
             b += android.graphics.Color.blue(px) * weight
             total += weight
         }
-        if (total == 0f) return Color(0xFF3A3F4B)
-        return Color(r / total / 255f, g / total / 255f, b / total / 255f)
+        if (total == 0f) return NO_COLOR_ACCENT
+        val average = android.graphics.Color.rgb(
+            (r / total).toInt(), (g / total).toInt(), (b / total).toInt(),
+        )
+        android.graphics.Color.colorToHSV(average, hsv)
+        return if (hsv[1] < MIN_ACCENT_SATURATION) NO_COLOR_ACCENT else Color(average)
     }
 
     fun launchIntent(app: LauncherApp): Intent =
@@ -105,5 +112,8 @@ class AppRepository(private val context: Context) {
         // Tuned for a 1080p UI; never rasterize smaller than this.
         const val MIN_ICON_PX = 128
         const val MIN_BANNER_W = 352
+
+        val NO_COLOR_ACCENT = Color(0xFF8B0A1A)
+        const val MIN_ACCENT_SATURATION = 0.2f
     }
 }
