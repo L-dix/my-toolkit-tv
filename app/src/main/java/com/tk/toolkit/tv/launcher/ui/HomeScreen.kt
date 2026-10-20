@@ -132,7 +132,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                         .fillMaxSize()
                         .verticalFadeEdges(top = 20.dp, bottom = 28.dp),
                 ) {
-                    // Hidden until an app is pinned from its menu.
+                    // Hidden when nothing is pinned.
                     if (pinnedApps.isNotEmpty()) {
                         item(key = WATCH_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
                             SectionTitle("Continue Watching", accentBar = true)

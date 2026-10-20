@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.toolkit.tv.launcher.data.AppRepository
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
+import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.LauncherPrefs
 import kotlinx.coroutines.Dispatchers
@@ -63,9 +64,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return LauncherState(
             apps = visible,
             hiddenApps = hiddenApps.sortedBy { it.label.lowercase() },
-            pinnedApps = prefs.pinnedPackages().mapNotNull { byPackage[it] },
+            pinnedApps = pinnedPackages(all).mapNotNull { byPackage[it] },
         )
     }
+
+    /** The user's pins, or the default ones until the user changes them. */
+    private fun pinnedPackages(all: List<LauncherApp>): List<String> =
+        prefs.pinnedPackages() ?: HomeDefaults.resolve(HomeDefaults.PINNED, all)
 
     /** Re-splits the loaded apps after a hide or pin change, keeping the rest of the state. */
     private fun resplit() = _state.update { current ->
@@ -94,8 +99,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun endMove() {
+        val moved = _state.value.movingKey
         _state.update { it.copy(movingKey = null) }
-        saveOrder()
+        saveOrder(moved)
     }
 
     fun setHidden(packageName: String, hidden: Boolean) {
@@ -104,16 +110,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         resplit()
     }
 
+    /** Newly pinned apps go to the end of Continue Watching. */
     fun setPinned(packageName: String, pinned: Boolean) {
-        prefs.setPinned(packageName, pinned)
+        val current = _state.value
+        val others = pinnedPackages(current.apps + current.hiddenApps) - packageName
+        prefs.savePinned(if (pinned) others + packageName else others)
         resplit()
     }
 
-    private fun saveOrder() {
+    private fun saveOrder(movedKey: String?) {
         val current = _state.value
         prefs.saveOrder((current.apps + current.hiddenApps).map { it.packageName })
+        // Only a moved pin saves the pins, so the defaults stay live (e.g. pin Kick once it's
+        // installed) until the user actually changes Continue Watching.
+        if (current.pinnedApps.none { ContinueWatching.key(it.packageName) == movedKey }) return
         // Keeps pinned apps that aren't installed right now after the visible ones.
         val visible = current.pinnedApps.map { it.packageName }
-        prefs.savePinned(visible + prefs.pinnedPackages().filter { it !in visible })
+        prefs.savePinned(visible + prefs.pinnedPackages().orEmpty().filter { it !in visible })
     }
 }

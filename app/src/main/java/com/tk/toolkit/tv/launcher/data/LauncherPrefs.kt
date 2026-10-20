@@ -22,26 +22,27 @@ class LauncherPrefs(context: Context) {
         prefs.edit { putStringSet(KEY_HIDDEN, updated) }
     }
 
-    /** Packages pinned to Continue Watching, in the user's order. */
-    fun pinnedPackages(): List<String> =
-        prefs.getString(KEY_PINNED, null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+    /**
+     * Packages pinned to Continue Watching, in the user's order, or null until the user first
+     * pins, unpins or moves one (the defaults in [HomeDefaults.PINNED] apply until then).
+     */
+    fun pinnedPackages(): List<String>? =
+        prefs.getString(KEY_PINNED, null)?.split('\n')?.filter { it.isNotBlank() }
 
     fun savePinned(packages: List<String>) {
         prefs.edit { putString(KEY_PINNED, packages.joinToString("\n")) }
     }
 
-    /** Newly pinned apps go to the end of Continue Watching. */
-    fun setPinned(packageName: String, pinned: Boolean) {
-        val others = pinnedPackages() - packageName
-        savePinned(if (pinned) others + packageName else others)
-    }
-
-    /** Apps in saved order first, then any apps not yet ordered, alphabetically. */
+    /**
+     * Apps in saved order first, then any apps not yet ordered: those in [HomeDefaults.FIRST_APPS]
+     * in that order, then the rest alphabetically.
+     */
     fun sort(apps: List<LauncherApp>): List<LauncherApp> {
         val rank = loadOrder().withIndex().associate { (i, pkg) -> pkg to i }
         val (known, fresh) = apps.partition { it.packageName in rank }
+        val firstRank = HomeDefaults.resolve(HomeDefaults.FIRST_APPS, fresh).withIndex().associate { (i, pkg) -> pkg to i }
         return known.sortedBy { rank.getValue(it.packageName) } +
-            fresh.sortedBy { it.label.lowercase() }
+            fresh.sortedWith(compareBy({ firstRank[it.packageName] ?: Int.MAX_VALUE }, { it.label.lowercase() }))
     }
 
     private companion object {

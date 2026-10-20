@@ -7,7 +7,7 @@ A personal home screen (launcher) for Google TV and Android TV, built with Jetpa
 - **Clock header**: the time and date on one compact line, with quick buttons for audio output, Ambilight and system settings.
 - **Audio output picker**: opens Google TV's own audio output menu to switch between TV speakers, HDMI, and Bluetooth devices.
 - **Ambilight button** (Philips TVs): opens the Ambilight settings. The candidate packages are in `AMBILIGHT_PACKAGES` (or set an exact screen in `AMBILIGHT_COMPONENT`) in `Ambilight.kt`; if none is found it opens the system settings.
-- **Continue Watching**: shortcuts to apps you pin (long-press OK on an app › **Pin to Continue Watching**). Empty and hidden until you pin something; pinned apps can be moved or unpinned from their own menu.
+- **Continue Watching**: shortcuts to apps you pin (long-press OK on an app › **Pin to Continue Watching**); pinned apps can be moved or unpinned from their own menu. By default it holds YouTube, Kick and a video player (VLC, MX Player, Kodi…) when installed, and the app grid starts with the streaming apps (HBO Max, Apple TV, Netflix, Molotov, CANAL+…). Both lists are in `HomeDefaults.kt`.
 - **App grid**: apps shown as their TV banners (or a tinted icon tile), with a soft glow on focus.
 - **App menu** (long-press OK on an app): move it to reorder the grid, hide it in **More Apps**, open App info, force stop, or uninstall.
 - **Home button takeover**: an optional Accessibility service sends the Home button and the stock home screen to Toolkit, so you don't have to disable the stock launcher. It also powers one-click Force stop.
