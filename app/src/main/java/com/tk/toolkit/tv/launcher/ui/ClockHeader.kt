@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speaker
+import androidx.compose.material.icons.outlined.WbIridescent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -34,7 +35,12 @@ import java.time.format.DateTimeFormatter
 private data class ClockText(val time: String, val meridiem: String?, val weekday: String, val date: String)
 
 @Composable
-fun ClockHeader(onOpenAudioOutput: () -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+fun ClockHeader(
+    onOpenAudioOutput: () -> Unit,
+    onOpenAmbilight: () -> Unit,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val clock by produceState(clockText(DateFormat.is24HourFormat(context))) {
         while (true) {
@@ -73,6 +79,8 @@ fun ClockHeader(onOpenAudioOutput: () -> Unit, onOpenSettings: () -> Unit, modif
         }
         Spacer(Modifier.weight(1f))
         HeaderButton(Icons.Outlined.Speaker, "Audio output", onOpenAudioOutput)
+        Spacer(Modifier.width(12.dp))
+        HeaderButton(Icons.Outlined.WbIridescent, "Ambilight", onOpenAmbilight)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Settings, "Settings", onOpenSettings)
     }
