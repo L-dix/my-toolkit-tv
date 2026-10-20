@@ -4,13 +4,13 @@ A personal home screen (launcher) for Google TV and Android TV, built with Jetpa
 
 ## Features
 
-- **Clock header**: the time and date on one compact line, with quick buttons for audio output, Ambilight and system settings.
+- **Clock header**: the time and date on one compact line, with quick buttons to sort the apps (streaming first, or A to Z), audio output, Ambilight and system settings.
 - **Audio output picker**: opens Google TV's own audio output menu to switch between TV speakers, HDMI, and Bluetooth devices.
 - **Ambilight button** (Philips TVs): opens the Ambilight settings. The candidate packages are in `AMBILIGHT_PACKAGES` (or set an exact screen in `AMBILIGHT_COMPONENT`) in `Ambilight.kt`; if none is found it opens the system settings.
 - **Continue Watching**: shortcuts to apps you pin (long-press OK on an app › **Pin to Continue Watching**); pinned apps can be moved or unpinned from their own menu. By default it holds YouTube, Kick and a video player (VLC, MX Player, Kodi…) when installed, and the app grid starts with the streaming apps (HBO Max, Apple TV, Netflix, Molotov, CANAL+…). Both lists are in `HomeDefaults.kt`.
 - **App grid**: apps shown as their TV banners (or a tinted icon tile), with a soft glow on focus.
 - **App menu** (long-press OK on an app): move it to reorder the grid, hide it in **More Apps**, open App info, force stop, or uninstall.
-- **Home button takeover**: an optional Accessibility service sends the Home button and the stock home screen to Toolkit, so you don't have to disable the stock launcher. It also powers one-click Force stop.
+- **Home button takeover**: an optional Accessibility service sends the Home button and the stock home screen to Toolkit, so you don't have to disable the stock launcher. Hold Home for the quick settings, or for 4 seconds to get the Google TV home back until you press Home again. It also powers one-click Force stop.
 
 ## Getting started
 
@@ -58,13 +58,14 @@ Sur la TV :
    - si Toolkit avait déjà été installé avec Downloader, **Désinstaller Toolkit** d'abord ;
    - **Ouvrir le réglage** › autoriser **Toolkit Installer** dans Sources inconnues, puis Retour ;
    - **Installer Toolkit** › confirmer l'installation.
-5. **Activer Toolkit comme écran d'accueil** : bouton **Ouvrir l'accessibilité** (ou Paramètres › Système › Accessibilité) › **Toolkit** › Activer. Attention à ne pas activer TalkBack, qui lit l'écran à voix haute. Le bouton Home ouvre alors Toolkit (un appui long ouvre les réglages rapides), et « Force stop » fonctionne en un clic.
+5. **Activer Toolkit comme écran d'accueil** : bouton **Ouvrir l'accessibilité** (ou Paramètres › Système › Accessibilité) › **Toolkit** › Activer. Attention à ne pas activer TalkBack, qui lit l'écran à voix haute. Le bouton Home ouvre alors Toolkit : un appui long ouvre les réglages rapides, et **un appui de 4 secondes ouvre l'accueil Google TV d'origine** (un appui simple sur Home ramène à Toolkit). « Force stop » fonctionne en un clic.
 
 **Mises à jour** : ouvrir Toolkit Installer › **Mettre à jour Toolkit**. Ne pas réinstaller Toolkit avec Downloader : Android bloquerait de nouveau son accessibilité. Toolkit Installer lui-même se met à jour avec Downloader (URL de `toolkit-installer.apk`).
 
 ### Revenir en arrière
 
-- **Retrouver l'accueil Google TV** : Paramètres › Système › Accessibilité › Toolkit › Désactiver. Le bouton Home ouvre de nouveau l'accueil d'origine ; Toolkit reste installé et s'ouvre depuis la liste des applis.
+- **Passer un moment sur l'accueil Google TV** : maintenir Home 4 secondes ; un appui simple sur Home ramène à Toolkit.
+- **Retrouver l'accueil Google TV pour de bon** : Paramètres › Système › Accessibilité › Toolkit › Désactiver. Le bouton Home ouvre de nouveau l'accueil d'origine ; Toolkit reste installé et s'ouvre depuis la liste des applis.
 - **Désinstaller Toolkit** : Paramètres › Applications › Toolkit › Désinstaller (et de même pour Toolkit Installer et Downloader). Le service d'accessibilité disparaît avec l'appli.
 - **Revenir à une version précédente** : Android refuse d'installer une version plus ancienne par-dessus une plus récente. Désinstaller d'abord Toolkit (l'ordre des applis et les épingles sont perdus), puis réinstaller la version voulue. Toolkit Installer installe toujours la dernière Release : pour une version précise, la télécharger depuis la page Releases du dépôt (par ex. `https://github.com/L-dix/my-toolkit-tv/releases/download/v1.0.5/toolkit-tv.apk`), en sachant qu'installée ainsi elle aura l'accessibilité bloquée.
 

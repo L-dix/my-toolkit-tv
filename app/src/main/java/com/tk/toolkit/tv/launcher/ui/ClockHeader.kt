@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.material.icons.outlined.WbIridescent
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 
 @Composable
 fun ClockHeader(
+    onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenAmbilight: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -100,6 +102,8 @@ fun ClockHeader(
             )
         }
         Spacer(Modifier.weight(1f))
+        HeaderButton(Icons.Outlined.SortByAlpha, "Sort apps", onSortApps)
+        Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Speaker, "Audio output", onOpenAudioOutput)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.WbIridescent, "Ambilight", onOpenAmbilight)

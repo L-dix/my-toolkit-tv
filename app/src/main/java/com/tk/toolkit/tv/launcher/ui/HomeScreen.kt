@@ -80,6 +80,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var menuApp by remember { mutableStateOf<LauncherApp?>(null) }
     var menuPinnedApp by remember { mutableStateOf<LauncherApp?>(null) }
     var showHidden by remember { mutableStateOf(false) }
+    var showSort by remember { mutableStateOf(false) }
     var lastFocusedKey by rememberSaveable { mutableStateOf<String?>(null) }
     var lastFocusedIndex by rememberSaveable { mutableStateOf(0) }
     // Not saved: every fresh start begins on the first app.
@@ -114,6 +115,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
+                onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
                 onOpenAmbilight = { Ambilight.open(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },
@@ -238,6 +240,14 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                 context.safeStart(viewModel.launchIntent(app))
             },
             onLongPress = { menuApp = it },
+        )
+    }
+
+    if (showSort) {
+        SortAppsDialog(
+            onDismiss = { showSort = false },
+            onSortDefault = { showSort = false; viewModel.sortApps(alphabetical = false) },
+            onSortAlphabetical = { showSort = false; viewModel.sortApps(alphabetical = true) },
         )
     }
 

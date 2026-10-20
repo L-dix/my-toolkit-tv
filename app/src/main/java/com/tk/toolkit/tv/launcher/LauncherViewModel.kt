@@ -110,6 +110,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         resplit()
     }
 
+    /** Replaces the user's app order: streaming apps first (the default), or all A to Z. */
+    fun sortApps(alphabetical: Boolean) {
+        val current = _state.value
+        if (current.movingKey != null) return
+        val all = current.apps + current.hiddenApps
+        val sorted = if (alphabetical) all.sortedBy { it.label.lowercase() } else prefs.defaultOrder(all)
+        prefs.saveOrder(sorted.map { it.packageName })
+        resplit()
+    }
+
     /** Newly pinned apps go to the end of Continue Watching. */
     fun setPinned(packageName: String, pinned: Boolean) {
         val current = _state.value

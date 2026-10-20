@@ -40,9 +40,13 @@ class LauncherPrefs(context: Context) {
     fun sort(apps: List<LauncherApp>): List<LauncherApp> {
         val rank = loadOrder().withIndex().associate { (i, pkg) -> pkg to i }
         val (known, fresh) = apps.partition { it.packageName in rank }
-        val firstRank = HomeDefaults.resolve(HomeDefaults.FIRST_APPS, fresh).withIndex().associate { (i, pkg) -> pkg to i }
-        return known.sortedBy { rank.getValue(it.packageName) } +
-            fresh.sortedWith(compareBy({ firstRank[it.packageName] ?: Int.MAX_VALUE }, { it.label.lowercase() }))
+        return known.sortedBy { rank.getValue(it.packageName) } + defaultOrder(fresh)
+    }
+
+    /** [HomeDefaults.FIRST_APPS] in that order, then the rest alphabetically. */
+    fun defaultOrder(apps: List<LauncherApp>): List<LauncherApp> {
+        val firstRank = HomeDefaults.resolve(HomeDefaults.FIRST_APPS, apps).withIndex().associate { (i, pkg) -> pkg to i }
+        return apps.sortedWith(compareBy({ firstRank[it.packageName] ?: Int.MAX_VALUE }, { it.label.lowercase() }))
     }
 
     private companion object {
