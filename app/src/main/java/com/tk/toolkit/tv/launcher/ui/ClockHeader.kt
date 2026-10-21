@@ -17,11 +17,14 @@ import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -60,19 +63,28 @@ fun ClockHeader(
         }
     }
 
+    val timeStyle = MaterialTheme.typography.displaySmall.copy(
+        fontFamily = font.family,
+        fontWeight = font.timeWeight,
+        fontSize = 30.sp,
+        letterSpacing = (-0.5).sp,
+        // Same-width digits in fonts that have them.
+        fontFeatureSettings = "tnum",
+        brush = Brush.verticalGradient(listOf(ToolkitColors.OnSurface, ToolkitColors.Accent)),
+    )
+    // The time gets the width of its widest possible value ("00:00" … "99:99"), so the date and
+    // weather next to it don't shift when the digits change, whatever the font.
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val timeWidth = remember(font, measurer) {
+        val widest = (0..9).maxOf { d -> measurer.measure("$d$d:$d$d", timeStyle).size.width }
+        with(density) { widest.toDp() }
+    }
+
     // One compact line, so the rows below get the height.
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                clock.time,
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = font.family,
-                    fontWeight = font.timeWeight,
-                    fontSize = 30.sp,
-                    letterSpacing = (-0.5).sp,
-                    brush = Brush.verticalGradient(listOf(ToolkitColors.OnSurface, ToolkitColors.Accent)),
-                ),
-            )
+            Text(clock.time, style = timeStyle, maxLines = 1, softWrap = false, modifier = Modifier.width(timeWidth))
             clock.meridiem?.let {
                 Text(
                     it,
