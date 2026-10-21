@@ -31,6 +31,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.tk.toolkit.tv.launcher.data.Weather
 import com.tk.toolkit.tv.ui.theme.Heros
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.delay
@@ -42,6 +43,7 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 
 @Composable
 fun ClockHeader(
+    weather: Weather?,
     onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -100,12 +102,41 @@ fun ClockHeader(
                 color = ToolkitColors.OnSurfaceMuted,
             )
         }
+        weather?.let { WeatherBlock(it) }
         Spacer(Modifier.weight(1f))
         HeaderButton(Icons.Outlined.SortByAlpha, "Trier les applis", onSortApps)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Speaker, "Sortie audio", onOpenAudioOutput)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Settings, "Paramètres", onOpenSettings)
+    }
+}
+
+/** "☁️ 12°" over "Paris · Couvert", set apart from the date by the same divider. */
+@Composable
+private fun WeatherBlock(weather: Weather) {
+    Spacer(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .size(width = 1.dp, height = 26.dp)
+            .background(ToolkitColors.OnSurface.copy(alpha = 0.15f)),
+    )
+    Column {
+        Text(
+            "${weather.emoji} ${weather.temperature}°",
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = Heros,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                letterSpacing = 0.sp,
+            ),
+            color = ToolkitColors.OnSurface,
+        )
+        Text(
+            listOf(weather.city, weather.description).filter { it.isNotEmpty() }.joinToString(" · "),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
+            color = ToolkitColors.OnSurfaceMuted,
+        )
     }
 }
 

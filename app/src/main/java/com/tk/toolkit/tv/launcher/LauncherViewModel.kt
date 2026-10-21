@@ -8,8 +8,11 @@ import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.LauncherPrefs
+import com.tk.toolkit.tv.launcher.data.Weather
+import com.tk.toolkit.tv.launcher.data.WeatherSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,11 +45,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Easter egg: rainbow border around the home screen, toggled by holding 2 for 4 seconds. */
     val rainbow: StateFlow<Boolean> = _rainbow.asStateFlow()
 
+    private val _weather = MutableStateFlow<Weather?>(null)
+
+    /** Current weather for the header, or null until the first successful fetch. */
+    val weather: StateFlow<Weather?> = _weather.asStateFlow()
+
     private var refreshJob: Job? = null
     private val refreshDispatcher = Dispatchers.IO.limitedParallelism(1)
 
     init {
         refresh()
+        viewModelScope.launch {
+            while (true) {
+                // On failure keep showing the last value and try again sooner.
+                val fetched = withContext(Dispatchers.IO) { runCatching { WeatherSource.fetch() }.getOrNull() }
+                if (fetched != null) _weather.value = fetched
+                delay(if (fetched != null) WEATHER_REFRESH_MS else WEATHER_RETRY_MS)
+            }
+        }
     }
 
     fun refresh() {
@@ -153,5 +169,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         // Keeps pinned apps that aren't installed right now after the visible ones.
         val visible = current.pinnedApps.map { it.packageName }
         prefs.savePinned(visible + prefs.pinnedPackages().orEmpty().filter { it !in visible })
+    }
+
+    private companion object {
+        const val WEATHER_REFRESH_MS = 30 * 60_000L
+        const val WEATHER_RETRY_MS = 5 * 60_000L
     }
 }

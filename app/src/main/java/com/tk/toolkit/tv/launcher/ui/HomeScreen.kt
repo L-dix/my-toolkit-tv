@@ -82,6 +82,7 @@ private class HoldTimer(var job: Job? = null)
 fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rainbow by viewModel.rainbow.collectAsStateWithLifecycle()
+    val weather by viewModel.weather.collectAsStateWithLifecycle()
     val keyHold = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
@@ -152,6 +153,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     Box(Modifier.fillMaxSize().then(heldDigits)) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
+                weather = weather,
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },
