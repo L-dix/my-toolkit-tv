@@ -83,6 +83,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val rainbow by viewModel.rainbow.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
+    val border by viewModel.border.collectAsStateWithLifecycle()
     val keyHold = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
@@ -266,7 +267,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             }
         }
 
-        if (rainbow) RainbowBorder()
+        if (rainbow) RainbowBorder(border)
 
         AnimatedVisibility(
             visible = state.movingKey != null,
@@ -297,11 +298,13 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         OptionsDialog(
             settings = shortcuts,
             clockFont = clockFont,
-            onClockFont = viewModel::setClockFont,
+            rainbowOn = rainbow,
+            border = border,
             onDismiss = { showOptions = false },
-            onKickChannel = viewModel::setKickChannel,
-            onYoutubePlaylist = viewModel::setYoutubePlaylist,
-            onHoldDurations = viewModel::setHoldDurations,
+            onClockFont = viewModel::setClockFont,
+            onShortcuts = viewModel::setShortcuts,
+            onToggleRainbow = viewModel::toggleRainbow,
+            onBorder = viewModel::setBorder,
         )
     }
 

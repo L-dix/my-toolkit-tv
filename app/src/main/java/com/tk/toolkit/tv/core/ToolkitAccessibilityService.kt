@@ -11,12 +11,14 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import com.tk.toolkit.tv.MainActivity
 import com.tk.toolkit.tv.launcher.data.AppActions
+import com.tk.toolkit.tv.launcher.data.LauncherPrefs
 
 /**
  * System-level helpers that need an accessibility service:
  * - Sends the Home button (and the stock Google TV home screen) to Toolkit, so it works as
  *   the launcher without disabling the stock one. Holding Home opens the quick settings, and
- *   holding it for 4 seconds opens the stock home until Home is pressed again.
+ *   holding it longer opens the stock home until Home is pressed again (both durations are
+ *   set in Toolkit's options).
  * - Drives the system App info screen to press "Force stop" → "OK" after [forceStop].
  */
 class ToolkitAccessibilityService : AccessibilityService() {
@@ -24,6 +26,9 @@ class ToolkitAccessibilityService : AccessibilityService() {
     private enum class Step { PressForceStop, Confirm }
 
     private val handler = Handler(Looper.getMainLooper())
+
+    /** Home hold durations, set in Toolkit's options (shared preferences, same process). */
+    private val prefs by lazy { LauncherPrefs(this) }
     private var target: String? = null
     private var step = Step.PressForceStop
     private val timeout = Runnable { finish(null) }
@@ -64,13 +69,13 @@ class ToolkitAccessibilityService : AccessibilityService() {
             KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
                 // Fires while still held, so the stock home shows up without waiting for release.
                 homeHeldForStock = false
-                handler.postDelayed(openStockHomeAfterHold, STOCK_HOME_HOLD_MS)
+                handler.postDelayed(openStockHomeAfterHold, prefs.homeStockHomeMs)
             }
             KeyEvent.ACTION_UP -> {
                 handler.removeCallbacks(openStockHomeAfterHold)
                 if (!homeHeldForStock) {
                     val held = event.eventTime - event.downTime
-                    if (held >= LONG_PRESS_MS) performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) else openToolkit()
+                    if (held >= prefs.homeQuickSettingsMs) performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) else openToolkit()
                 }
             }
         }
@@ -168,8 +173,6 @@ class ToolkitAccessibilityService : AccessibilityService() {
             private set
 
         private const val TIMEOUT_MS = 6_000L
-        private const val LONG_PRESS_MS = 600L
-        private const val STOCK_HOME_HOLD_MS = 4_000L
         private const val STOCK_LAUNCHER = "com.google.android.apps.tv.launcherx"
         private const val STOCK_HOME_ACTIVITY = "com.google.android.apps.tv.launcherx.home.HomeActivity"
 

@@ -54,10 +54,41 @@ class LauncherPrefs(context: Context) {
         get() = prefs.getLong(KEY_PLAYLIST_HOLD, Shortcuts.DEFAULT_PLAYLIST_HOLD_MS)
         set(value) = prefs.edit { putLong(KEY_PLAYLIST_HOLD, value) }
 
+    /** How long Home must be held for the quick settings, and for the Google TV home. */
+    var homeQuickSettingsMs: Long
+        get() = prefs.getLong(KEY_HOME_QUICK, Shortcuts.DEFAULT_HOME_QUICK_SETTINGS_MS)
+        set(value) = prefs.edit { putLong(KEY_HOME_QUICK, value) }
+    var homeStockHomeMs: Long
+        get() = prefs.getLong(KEY_HOME_STOCK, Shortcuts.DEFAULT_HOME_STOCK_HOME_MS)
+        set(value) = prefs.edit { putLong(KEY_HOME_STOCK, value) }
+
     /** Name of the clock header's ClockFont. */
     var clockFont: String?
         get() = prefs.getString(KEY_CLOCK_FONT, null)
         set(value) = prefs.edit { putString(KEY_CLOCK_FONT, value) }
+
+    /** Look of the hold-2 border; each part falls back to its default. */
+    var borderSettings: BorderSettings
+        get() {
+            val default = BorderSettings()
+            return BorderSettings(
+                style = prefs.getString(KEY_BORDER_STYLE, null).toEnum(default.style),
+                palette = prefs.getString(KEY_BORDER_PALETTE, null).toEnum(default.palette),
+                thickness = prefs.getString(KEY_BORDER_THICKNESS, null).toEnum(default.thickness),
+                speed = prefs.getString(KEY_BORDER_SPEED, null).toEnum(default.speed),
+                glow = prefs.getString(KEY_BORDER_GLOW, null).toEnum(default.glow),
+            )
+        }
+        set(value) = prefs.edit {
+            putString(KEY_BORDER_STYLE, value.style.name)
+            putString(KEY_BORDER_PALETTE, value.palette.name)
+            putString(KEY_BORDER_THICKNESS, value.thickness.name)
+            putString(KEY_BORDER_SPEED, value.speed.name)
+            putString(KEY_BORDER_GLOW, value.glow.name)
+        }
+
+    private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
+        enumValues<E>().firstOrNull { it.name == this } ?: default
 
     /** Easter egg: the rainbow border around the home screen. */
     var rainbowBorder: Boolean
@@ -90,6 +121,13 @@ class LauncherPrefs(context: Context) {
         const val KEY_KICK_HOLD = "kick_hold_ms"
         const val KEY_RAINBOW_HOLD = "rainbow_hold_ms"
         const val KEY_PLAYLIST_HOLD = "playlist_hold_ms"
+        const val KEY_HOME_QUICK = "home_quick_settings_ms"
+        const val KEY_HOME_STOCK = "home_stock_home_ms"
+        const val KEY_BORDER_STYLE = "border_style"
+        const val KEY_BORDER_PALETTE = "border_palette"
+        const val KEY_BORDER_THICKNESS = "border_thickness"
+        const val KEY_BORDER_SPEED = "border_speed"
+        const val KEY_BORDER_GLOW = "border_glow"
         const val KEY_YOUTUBE_PLAYLIST = "youtube_playlist"
     }
 }

@@ -15,6 +15,10 @@ object Shortcuts {
     const val DEFAULT_RAINBOW_HOLD_MS = 4_000L
     const val DEFAULT_PLAYLIST_HOLD_MS = 2_000L
 
+    /** Holding Home: past the first, the quick settings; past the second, the Google TV home. */
+    const val DEFAULT_HOME_QUICK_SETTINGS_MS = 600L
+    const val DEFAULT_HOME_STOCK_HOME_MS = 4_000L
+
     /** Kick doesn't document its deep links, so these forms are tried in order, inside Kick. */
     fun kickLinks(channel: String) = listOf(
         "https://kick.com/$channel",

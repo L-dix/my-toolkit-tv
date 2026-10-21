@@ -44,6 +44,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.ShortcutSettings
+import com.tk.toolkit.tv.launcher.data.BorderGlow
+import com.tk.toolkit.tv.launcher.data.BorderPalette
+import com.tk.toolkit.tv.launcher.data.BorderSettings
+import com.tk.toolkit.tv.launcher.data.BorderSpeed
+import com.tk.toolkit.tv.launcher.data.BorderStyle
+import com.tk.toolkit.tv.launcher.data.BorderThickness
 import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ClockFont
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
@@ -52,16 +58,21 @@ private val PanelShape = RoundedCornerShape(24.dp)
 
 private enum class Field { Kick, Playlist, Font }
 
-/** Toolkit's own options: the clock font and what the held 1 and 3 keys open. Styled like the app menu. */
+/**
+ * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
+ * border animation. Styled like the app menu; most entries step to their next value on OK.
+ */
 @Composable
 fun OptionsDialog(
     settings: ShortcutSettings,
     clockFont: ClockFont,
-    onClockFont: (ClockFont) -> Unit,
+    rainbowOn: Boolean,
+    border: BorderSettings,
     onDismiss: () -> Unit,
-    onKickChannel: (String) -> Unit,
-    onYoutubePlaylist: (String) -> Unit,
-    onHoldDurations: (kickMs: Long, rainbowMs: Long, playlistMs: Long) -> Unit,
+    onClockFont: (ClockFont) -> Unit,
+    onShortcuts: (ShortcutSettings) -> Unit,
+    onToggleRainbow: () -> Unit,
+    onBorder: (BorderSettings) -> Unit,
 ) {
     var editing by remember { mutableStateOf<Field?>(null) }
     val context = LocalContext.current
@@ -72,7 +83,7 @@ fun OptionsDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
-                .width(440.dp)
+                .width(460.dp)
                 .clip(PanelShape)
                 .background(ToolkitColors.SurfaceRaised)
                 .border(1.dp, Color.White.copy(alpha = 0.08f), PanelShape)
@@ -80,11 +91,6 @@ fun OptionsDialog(
         ) {
             Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp)) {
                 Text("Options de Toolkit", style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
-                Text(
-                    "Affichage et raccourcis de la télécommande",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ToolkitColors.OnSurfaceMuted,
-                )
                 Text(versions, style = MaterialTheme.typography.bodyMedium, color = ToolkitColors.OnSurfaceMuted)
             }
             Column(
@@ -93,32 +99,58 @@ fun OptionsDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(12.dp),
             ) {
+                SectionLabel("Affichage")
                 ActionItem(
                     "Police de l'heure et de la date",
                     clockFont.label,
                     { editing = Field.Font },
                     Modifier.focusRequester(firstAction),
                 )
-                ActionItem(
-                    "Chaîne Kick · touche 1",
-                    "kick.com/${settings.kickChannel}",
-                    { editing = Field.Kick },
-                )
+
+                SectionLabel("Raccourcis")
+                ActionItem("Chaîne Kick · touche 1", "kick.com/${settings.kickChannel}", { editing = Field.Kick })
                 ActionItem(
                     "Playlist YouTube · touche 3",
                     "youtube.com/playlist?list=${settings.youtubePlaylist}",
                     { editing = Field.Playlist },
                 )
-                // OK steps through the durations, so no extra dialog is needed.
-                ActionItem("Durée d'appui · touche 1 (Kick)", holdLabel(settings.kickHoldMs), {
-                    onHoldDurations(nextHold(settings.kickHoldMs), settings.rainbowHoldMs, settings.playlistHoldMs)
+
+                SectionLabel("Durées d'appui")
+                ActionItem("Touche 1 · Kick", holdLabel(settings.kickHoldMs), {
+                    onShortcuts(settings.copy(kickHoldMs = nextStep(DigitHoldSteps, settings.kickHoldMs)))
                 })
-                ActionItem("Durée d'appui · touche 2 (arc-en-ciel)", holdLabel(settings.rainbowHoldMs), {
-                    onHoldDurations(settings.kickHoldMs, nextHold(settings.rainbowHoldMs), settings.playlistHoldMs)
+                ActionItem("Touche 2 · animation", holdLabel(settings.rainbowHoldMs), {
+                    onShortcuts(settings.copy(rainbowHoldMs = nextStep(DigitHoldSteps, settings.rainbowHoldMs)))
                 })
-                ActionItem("Durée d'appui · touche 3 (YouTube)", holdLabel(settings.playlistHoldMs), {
-                    onHoldDurations(settings.kickHoldMs, settings.rainbowHoldMs, nextHold(settings.playlistHoldMs))
+                ActionItem("Touche 3 · YouTube", holdLabel(settings.playlistHoldMs), {
+                    onShortcuts(settings.copy(playlistHoldMs = nextStep(DigitHoldSteps, settings.playlistHoldMs)))
                 })
+                ActionItem("Home · réglages rapides", holdLabel(settings.homeQuickSettingsMs), {
+                    onShortcuts(settings.copy(homeQuickSettingsMs = nextStep(QuickSettingsSteps, settings.homeQuickSettingsMs)))
+                })
+                ActionItem("Home · accueil Google TV", holdLabel(settings.homeStockHomeMs), {
+                    onShortcuts(settings.copy(homeStockHomeMs = nextStep(StockHomeSteps, settings.homeStockHomeMs)))
+                })
+
+                // The border is drawn behind this dialog, so changes show live around the screen.
+                SectionLabel("Animation de la touche 2")
+                ActionItem("Afficher l'animation", if (rainbowOn) "Activée" else "Désactivée", onToggleRainbow)
+                ActionItem("Style", stepLabel(border.style.label), {
+                    onBorder(border.copy(style = next(BorderStyle.entries, border.style)))
+                })
+                ActionItem("Couleurs", stepLabel(border.palette.label), {
+                    onBorder(border.copy(palette = next(BorderPalette.entries, border.palette)))
+                })
+                ActionItem("Épaisseur", stepLabel(border.thickness.label), {
+                    onBorder(border.copy(thickness = next(BorderThickness.entries, border.thickness)))
+                })
+                ActionItem("Vitesse", stepLabel(border.speed.label), {
+                    onBorder(border.copy(speed = next(BorderSpeed.entries, border.speed)))
+                })
+                ActionItem("Halo", stepLabel(border.glow.label), {
+                    onBorder(border.copy(glow = next(BorderGlow.entries, border.glow)))
+                })
+                ActionItem("Rétablir l'animation par défaut", "Arc-en-ciel tournant, normal", { onBorder(BorderSettings()) })
             }
         }
     }
@@ -130,7 +162,7 @@ fun OptionsDialog(
             initial = "https://kick.com/${settings.kickChannel}",
             parse = Shortcuts::parseKickChannel,
             onDismiss = { editing = null },
-            onSave = { onKickChannel(it); editing = null },
+            onSave = { onShortcuts(settings.copy(kickChannel = it)); editing = null },
         )
         Field.Playlist -> TextInputDialog(
             title = "Playlist YouTube",
@@ -138,7 +170,7 @@ fun OptionsDialog(
             initial = "https://youtube.com/playlist?list=${settings.youtubePlaylist}",
             parse = Shortcuts::parsePlaylistId,
             onDismiss = { editing = null },
-            onSave = { onYoutubePlaylist(it); editing = null },
+            onSave = { onShortcuts(settings.copy(youtubePlaylist = it)); editing = null },
         )
         Field.Font -> FontPickerDialog(
             current = clockFont,
@@ -149,6 +181,16 @@ fun OptionsDialog(
     }
 }
 
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = ToolkitColors.Accent,
+        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp),
+    )
+}
+
 /** "Toolkit 1.0.16 · Installer 1.0.12", to spot an app that wasn't updated. */
 private fun installedVersions(context: android.content.Context): String {
     fun version(pkg: String) = runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()
@@ -156,13 +198,20 @@ private fun installedVersions(context: android.content.Context): String {
     return "Toolkit ${version(context.packageName) ?: "?"} · $installer"
 }
 
-private val HoldSteps = listOf(500L, 1_000L, 1_500L, 2_000L, 3_000L, 4_000L, 5_000L)
+private val DigitHoldSteps = listOf(500L, 1_000L, 1_500L, 2_000L, 3_000L, 4_000L, 5_000L)
+private val QuickSettingsSteps = listOf(300L, 400L, 500L, 600L, 800L, 1_000L, 1_500L, 2_000L)
+private val StockHomeSteps = listOf(1_500L, 2_000L, 3_000L, 4_000L, 5_000L, 6_000L, 8_000L, 10_000L)
 
-private fun nextHold(current: Long): Long = HoldSteps.firstOrNull { it > current } ?: HoldSteps.first()
+/** The value after [current] in [steps], wrapping around; a value not in the list restarts. */
+private fun nextStep(steps: List<Long>, current: Long): Long = steps.firstOrNull { it > current } ?: steps.first()
+
+private fun <T> next(values: List<T>, current: T): T = values[(values.indexOf(current) + 1) % values.size]
+
+private fun stepLabel(value: String) = "$value · OK pour changer"
 
 private fun holdLabel(ms: Long): String {
     val seconds = if (ms % 1_000L == 0L) "${ms / 1_000L}" else "%.1f".format(ms / 1_000f).replace('.', ',')
-    return "$seconds s · OK pour changer"
+    return stepLabel("$seconds s")
 }
 
 /** Each font previewed as the header would show it; the current one is checked. */

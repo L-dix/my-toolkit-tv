@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.toolkit.tv.launcher.data.AppRepository
+import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
@@ -40,6 +41,8 @@ data class ShortcutSettings(
     val kickHoldMs: Long,
     val rainbowHoldMs: Long,
     val playlistHoldMs: Long,
+    val homeQuickSettingsMs: Long,
+    val homeStockHomeMs: Long,
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -62,8 +65,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             prefs.kickHoldMs,
             prefs.rainbowHoldMs,
             prefs.playlistHoldMs,
+            prefs.homeQuickSettingsMs,
+            prefs.homeStockHomeMs,
         )
     )
+
+    private val _border = MutableStateFlow(prefs.borderSettings)
+
+    /** Look of the hold-2 border, set in Toolkit's options. */
+    val border: StateFlow<BorderSettings> = _border.asStateFlow()
+
+    fun setBorder(settings: BorderSettings) {
+        prefs.borderSettings = settings
+        _border.value = settings
+    }
     val shortcuts: StateFlow<ShortcutSettings> = _shortcuts.asStateFlow()
 
     private val _clockFont = MutableStateFlow(ClockFont.fromName(prefs.clockFont))
@@ -143,21 +158,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         HomeDefaults.resolve(listOf(match), current.apps + current.hiddenApps).firstOrNull()
     }
 
-    fun setKickChannel(channel: String) {
-        prefs.kickChannel = channel
-        _shortcuts.update { it.copy(kickChannel = channel) }
-    }
-
-    fun setHoldDurations(kickMs: Long, rainbowMs: Long, playlistMs: Long) {
-        prefs.kickHoldMs = kickMs
-        prefs.rainbowHoldMs = rainbowMs
-        prefs.playlistHoldMs = playlistMs
-        _shortcuts.update { it.copy(kickHoldMs = kickMs, rainbowHoldMs = rainbowMs, playlistHoldMs = playlistMs) }
-    }
-
-    fun setYoutubePlaylist(playlist: String) {
-        prefs.youtubePlaylist = playlist
-        _shortcuts.update { it.copy(youtubePlaylist = playlist) }
+    /** Saves the shortcut targets and hold durations (the service reads the Home ones). */
+    fun setShortcuts(settings: ShortcutSettings) {
+        prefs.kickChannel = settings.kickChannel
+        prefs.youtubePlaylist = settings.youtubePlaylist
+        prefs.kickHoldMs = settings.kickHoldMs
+        prefs.rainbowHoldMs = settings.rainbowHoldMs
+        prefs.playlistHoldMs = settings.playlistHoldMs
+        prefs.homeQuickSettingsMs = settings.homeQuickSettingsMs
+        prefs.homeStockHomeMs = settings.homeStockHomeMs
+        _shortcuts.value = settings
     }
 
     /** Starts moving an app (by package) or a pinned app (by its Continue Watching key). */
