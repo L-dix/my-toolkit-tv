@@ -11,10 +11,19 @@ object HomeDefaults {
 
     class AppMatch(val packages: List<String> = emptyList(), val labels: List<String> = emptyList())
 
-    val KICK = AppMatch(labels = listOf("Kick"))
+    val KICK = AppMatch(packages = listOf("com.kick.mobile"), labels = listOf("Kick"))
 
-    /** Channel opened in Kick by the 🥵 button of the header. */
-    const val KICK_CHANNEL_URL = "https://kick.com/ryu7z"
+    /**
+     * Channel opened in Kick by the 🥵 button of the header. Kick doesn't document its deep
+     * links, so these forms are tried in order; if Kick handles none, Kick opens on its home.
+     */
+    val KICK_CHANNEL_LINKS = listOf(
+        "https://kick.com/ryu7z",
+        "https://www.kick.com/ryu7z",
+        "kick://ryu7z",
+        "kick://channel/ryu7z",
+        "kick://kick.com/ryu7z",
+    )
 
     /** Pinned to Continue Watching, in this order, until the user pins, unpins or moves a pin. */
     val PINNED = listOf(

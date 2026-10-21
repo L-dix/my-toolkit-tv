@@ -4,7 +4,7 @@ A personal home screen (launcher) for Google TV and Android TV, built with Jetpa
 
 ## Features
 
-- **Clock header**: the time and date on one compact line, with quick buttons for a favorite Kick channel (🥵, `KICK_CHANNEL_URL` in `HomeDefaults.kt`), sorting the apps (streaming first, or A to Z), audio output and system settings.
+- **Clock header**: the time and date on one compact line, with quick buttons for a favorite Kick channel (🥵, `KICK_CHANNEL_LINKS` in `HomeDefaults.kt`), sorting the apps (streaming first, or A to Z), audio output and system settings.
 - **Audio output picker**: opens Google TV's own audio output menu to switch between TV speakers, HDMI, and Bluetooth devices.
 - **Continue Watching**: shortcuts to apps you pin (long-press OK on an app › **Pin to Continue Watching**); pinned apps can be moved or unpinned from their own menu. By default it holds YouTube, Kick and a video player (VLC, MX Player, Kodi…) when installed, and the app grid starts with the streaming apps (HBO Max, Apple TV, Netflix, Molotov, CANAL+…). Both lists are in `HomeDefaults.kt`.
 - **Easter egg**: hold the **2** key for 4 seconds on the home screen for a turning rainbow border; hold it again to remove it.

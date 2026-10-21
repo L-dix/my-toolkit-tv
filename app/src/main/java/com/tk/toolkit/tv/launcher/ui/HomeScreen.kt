@@ -146,7 +146,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
                 onOpenKickChannel = {
-                    AppActions.openLink(context, HomeDefaults.KICK_CHANNEL_URL, viewModel.kickPackage())
+                    AppActions.openInApp(context, viewModel.kickPackage(), HomeDefaults.KICK_CHANNEL_LINKS, "Kick")
                 },
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },

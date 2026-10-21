@@ -25,24 +25,28 @@ object AppActions {
         )
 
     /**
-     * Opens [url] in the app [packageName] if it handles the link, else in any app that does,
-     * else just opens that app.
+     * Opens the first of [links] that the app [packageName] handles, inside that app only (never
+     * a browser); if it handles none, opens the app on its home screen.
      */
-    fun openLink(context: Context, url: String, packageName: String?) {
+    fun openInApp(context: Context, packageName: String?, links: List<String>, appName: String) {
+        if (packageName == null) {
+            Toast.makeText(context, "$appName n'est pas installé", Toast.LENGTH_SHORT).show()
+            return
+        }
         val pm = context.packageManager
-        val view = Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val link = listOfNotNull(packageName?.let { Intent(view).setPackage(it) }, view)
+        val link = links.asSequence()
+            .map { Intent(Intent.ACTION_VIEW, it.toUri()).setPackage(packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
             .firstOrNull { it.resolveActivity(pm) != null }
         if (link != null) {
             context.safeStart(link)
             return
         }
-        val app = packageName?.let { pm.getLeanbackLaunchIntentForPackage(it) ?: pm.getLaunchIntentForPackage(it) }
+        val app = pm.getLeanbackLaunchIntentForPackage(packageName) ?: pm.getLaunchIntentForPackage(packageName)
         if (app != null) {
-            Toast.makeText(context, "Le lien ne s'ouvre pas directement : ouverture de l'appli", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "$appName n'accepte pas les liens directs : ouverture de l'appli", Toast.LENGTH_SHORT).show()
             context.safeStart(app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } else {
-            Toast.makeText(context, "Appli introuvable", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Impossible d'ouvrir $appName", Toast.LENGTH_SHORT).show()
         }
     }
 
