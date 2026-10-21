@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -49,6 +48,8 @@ import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val TileShape = RoundedCornerShape(14.dp)
+private val IconTileTop = Color(0xFF9E0E22)
+private val IconTileBottom = Color(0xFF3A030B)
 
 @Composable
 fun AppTile(
@@ -122,14 +123,13 @@ fun AppTile(
     }
 }
 
-/** Tile for apps without a TV banner: icon over a gradient tinted with the icon's color. */
+/** Tile for apps without a TV banner: icon over a deep red gradient, like Toolkit's own icon. */
 @Composable
 private fun IconTileContent(app: LauncherApp) {
-    val base = lerp(app.accent, ToolkitColors.Surface, 0.55f)
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(base, lerp(base, Color.Black, 0.5f)))),
+            .background(Brush.linearGradient(listOf(IconTileTop, IconTileBottom))),
         contentAlignment = Alignment.Center,
     ) {
         Image(

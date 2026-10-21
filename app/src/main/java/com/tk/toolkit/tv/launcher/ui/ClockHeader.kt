@@ -42,7 +42,6 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 
 @Composable
 fun ClockHeader(
-    onOpenKickChannel: () -> Unit,
     onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -102,10 +101,6 @@ fun ClockHeader(
             )
         }
         Spacer(Modifier.weight(1f))
-        HeaderButton("Kick · ryu7z", onOpenKickChannel) {
-            Text("🥵", fontSize = 20.sp)
-        }
-        Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.SortByAlpha, "Trier les applis", onSortApps)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Speaker, "Sortie audio", onOpenAudioOutput)

@@ -71,9 +71,10 @@ private const val COLUMNS = 5
 private const val MORE_APPS_KEY = "toolkit:more-apps"
 private const val WATCH_TITLE_KEY = "toolkit:continue-watching-title"
 private const val APPS_TITLE_KEY = "toolkit:apps-title"
+private const val KICK_HOLD_MS = 2_000L
 private const val RAINBOW_HOLD_MS = 4_000L
 
-/** The pending "held long enough" timer of the rainbow easter egg. */
+/** The pending "held long enough" timer of a held digit key. */
 private class HoldTimer(var job: Job? = null)
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -81,7 +82,7 @@ private class HoldTimer(var job: Job? = null)
 fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rainbow by viewModel.rainbow.collectAsStateWithLifecycle()
-    val rainbowHold = remember { HoldTimer() }
+    val keyHold = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
@@ -123,31 +124,34 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         requesterFor(target).requestFocusWhenReady()
     }
 
-    // Easter egg: holding 2 for 4 seconds turns the rainbow border on or off.
-    val rainbowKey = Modifier.onPreviewKeyEvent { event ->
-        val code = event.nativeKeyEvent.keyCode
-        if (code != android.view.KeyEvent.KEYCODE_2 && code != android.view.KeyEvent.KEYCODE_NUMPAD_2) {
-            return@onPreviewKeyEvent false
+    // Held digit keys: 1 for 2 seconds opens the Kick channel, 2 for 4 seconds (easter egg)
+    // turns the rainbow border on or off.
+    val heldDigits = Modifier.onPreviewKeyEvent { event ->
+        val (holdMs, action) = when (event.nativeKeyEvent.keyCode) {
+            android.view.KeyEvent.KEYCODE_1, android.view.KeyEvent.KEYCODE_NUMPAD_1 -> KICK_HOLD_MS to {
+                AppActions.openInApp(context, viewModel.kickPackage(), HomeDefaults.KICK_CHANNEL_LINKS, "Kick")
+            }
+            android.view.KeyEvent.KEYCODE_2, android.view.KeyEvent.KEYCODE_NUMPAD_2 -> RAINBOW_HOLD_MS to {
+                viewModel.toggleRainbow()
+            }
+            else -> return@onPreviewKeyEvent false
         }
         when (event.type) {
             KeyEventType.KeyDown -> if (event.nativeKeyEvent.repeatCount == 0) {
-                rainbowHold.job?.cancel()
-                rainbowHold.job = scope.launch {
-                    delay(RAINBOW_HOLD_MS)
-                    viewModel.toggleRainbow()
+                keyHold.job?.cancel()
+                keyHold.job = scope.launch {
+                    delay(holdMs)
+                    action()
                 }
             }
-            KeyEventType.KeyUp -> rainbowHold.job?.cancel()
+            KeyEventType.KeyUp -> keyHold.job?.cancel()
         }
         true
     }
 
-    Box(Modifier.fillMaxSize().then(rainbowKey)) {
+    Box(Modifier.fillMaxSize().then(heldDigits)) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
-                onOpenKickChannel = {
-                    AppActions.openInApp(context, viewModel.kickPackage(), HomeDefaults.KICK_CHANNEL_LINKS, "Kick")
-                },
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },
