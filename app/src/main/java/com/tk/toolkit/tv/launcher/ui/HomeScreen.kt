@@ -62,6 +62,7 @@ import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
+import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -72,6 +73,7 @@ private const val MORE_APPS_KEY = "toolkit:more-apps"
 private const val WATCH_TITLE_KEY = "toolkit:continue-watching-title"
 private const val APPS_TITLE_KEY = "toolkit:apps-title"
 private const val KICK_HOLD_MS = 2_000L
+private const val PLAYLIST_HOLD_MS = 2_000L
 private const val RAINBOW_HOLD_MS = 4_000L
 
 /** The pending "held long enough" timer of a held digit key. */
@@ -94,6 +96,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var menuPinnedApp by remember { mutableStateOf<LauncherApp?>(null) }
     var showHidden by remember { mutableStateOf(false) }
     var showSort by remember { mutableStateOf(false) }
+    var showOptions by remember { mutableStateOf(false) }
     var lastFocusedKey by rememberSaveable { mutableStateOf<String?>(null) }
     var lastFocusedIndex by rememberSaveable { mutableStateOf(0) }
     // Not saved: every fresh start begins on the first app.
@@ -125,12 +128,17 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         requesterFor(target).requestFocusWhenReady()
     }
 
-    // Held digit keys: 1 for 2 seconds opens the Kick channel, 2 for 4 seconds (easter egg)
-    // turns the rainbow border on or off.
+    // Held digit keys: 1 for 2 seconds opens the Kick channel, 3 for 2 seconds the YouTube
+    // playlist, and 2 for 4 seconds (easter egg) turns the rainbow border on or off.
     val heldDigits = Modifier.onPreviewKeyEvent { event ->
         val (holdMs, action) = when (event.nativeKeyEvent.keyCode) {
             android.view.KeyEvent.KEYCODE_1, android.view.KeyEvent.KEYCODE_NUMPAD_1 -> KICK_HOLD_MS to {
-                AppActions.openInApp(context, viewModel.kickPackage(), HomeDefaults.KICK_CHANNEL_LINKS, "Kick")
+                val channel = viewModel.shortcuts.value.kickChannel
+                AppActions.openInApp(context, viewModel.packageOf(HomeDefaults.KICK), Shortcuts.kickLinks(channel), "Kick")
+            }
+            android.view.KeyEvent.KEYCODE_3, android.view.KeyEvent.KEYCODE_NUMPAD_3 -> PLAYLIST_HOLD_MS to {
+                val playlist = viewModel.shortcuts.value.youtubePlaylist
+                AppActions.openInApp(context, viewModel.packageOf(HomeDefaults.YOUTUBE), Shortcuts.youtubeLinks(playlist), "YouTube")
             }
             android.view.KeyEvent.KEYCODE_2, android.view.KeyEvent.KEYCODE_NUMPAD_2 -> RAINBOW_HOLD_MS to {
                 viewModel.toggleRainbow()
@@ -154,6 +162,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
                 weather = weather,
+                onOpenOptions = { if (state.movingKey == null) showOptions = true },
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
                 onOpenSettings = { AppActions.openSystemSettings(context) },
@@ -280,6 +289,16 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                 context.safeStart(viewModel.launchIntent(app))
             },
             onLongPress = { menuApp = it },
+        )
+    }
+
+    if (showOptions) {
+        val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
+        OptionsDialog(
+            settings = shortcuts,
+            onDismiss = { showOptions = false },
+            onKickChannel = viewModel::setKickChannel,
+            onYoutubePlaylist = viewModel::setYoutubePlaylist,
         )
     }
 

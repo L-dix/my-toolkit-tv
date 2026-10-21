@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SortByAlpha
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 @Composable
 fun ClockHeader(
     weather: Weather?,
+    onOpenOptions: () -> Unit,
     onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -104,6 +106,8 @@ fun ClockHeader(
         }
         weather?.let { WeatherBlock(it) }
         Spacer(Modifier.weight(1f))
+        HeaderButton(Icons.Outlined.Tune, "Options de Toolkit", onOpenOptions)
+        Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.SortByAlpha, "Trier les applis", onSortApps)
         Spacer(Modifier.width(12.dp))
         HeaderButton(Icons.Outlined.Speaker, "Sortie audio", onOpenAudioOutput)

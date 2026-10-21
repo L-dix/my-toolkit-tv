@@ -33,6 +33,16 @@ class LauncherPrefs(context: Context) {
         prefs.edit { putString(KEY_PINNED, packages.joinToString("\n")) }
     }
 
+    /** Kick channel opened by holding 1. */
+    var kickChannel: String
+        get() = prefs.getString(KEY_KICK_CHANNEL, null) ?: Shortcuts.DEFAULT_KICK_CHANNEL
+        set(value) = prefs.edit { putString(KEY_KICK_CHANNEL, value) }
+
+    /** YouTube playlist ID played by holding 3. */
+    var youtubePlaylist: String
+        get() = prefs.getString(KEY_YOUTUBE_PLAYLIST, null) ?: Shortcuts.DEFAULT_YOUTUBE_PLAYLIST
+        set(value) = prefs.edit { putString(KEY_YOUTUBE_PLAYLIST, value) }
+
     /** Easter egg: the rainbow border around the home screen. */
     var rainbowBorder: Boolean
         get() = prefs.getBoolean(KEY_RAINBOW, false)
@@ -59,5 +69,7 @@ class LauncherPrefs(context: Context) {
         const val KEY_HIDDEN = "hidden"
         const val KEY_PINNED = "pinned"
         const val KEY_RAINBOW = "rainbow_border"
+        const val KEY_KICK_CHANNEL = "kick_channel"
+        const val KEY_YOUTUBE_PLAYLIST = "youtube_playlist"
     }
 }

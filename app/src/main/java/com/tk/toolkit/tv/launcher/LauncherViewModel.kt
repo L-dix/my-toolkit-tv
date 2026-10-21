@@ -32,6 +32,9 @@ data class LauncherState(
     val movingKey: String? = null,
 )
 
+/** Targets of the held-digit shortcuts, editable in Toolkit's options. */
+data class ShortcutSettings(val kickChannel: String, val youtubePlaylist: String)
+
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AppRepository(application)
@@ -44,6 +47,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /** Easter egg: rainbow border around the home screen, toggled by holding 2 for 4 seconds. */
     val rainbow: StateFlow<Boolean> = _rainbow.asStateFlow()
+
+    private val _shortcuts = MutableStateFlow(ShortcutSettings(prefs.kickChannel, prefs.youtubePlaylist))
+    val shortcuts: StateFlow<ShortcutSettings> = _shortcuts.asStateFlow()
 
     private val _weather = MutableStateFlow<Weather?>(null)
 
@@ -107,9 +113,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun launchIntent(app: LauncherApp) = repository.launchIntent(app)
 
-    /** Package of the installed Kick app, if any. */
-    fun kickPackage(): String? = _state.value.let { current ->
-        HomeDefaults.resolve(listOf(HomeDefaults.KICK), current.apps + current.hiddenApps).firstOrNull()
+    /** Package of the installed app matching [match], if any. */
+    fun packageOf(match: HomeDefaults.AppMatch): String? = _state.value.let { current ->
+        HomeDefaults.resolve(listOf(match), current.apps + current.hiddenApps).firstOrNull()
+    }
+
+    fun setKickChannel(channel: String) {
+        prefs.kickChannel = channel
+        _shortcuts.update { it.copy(kickChannel = channel) }
+    }
+
+    fun setYoutubePlaylist(playlist: String) {
+        prefs.youtubePlaylist = playlist
+        _shortcuts.update { it.copy(youtubePlaylist = playlist) }
     }
 
     /** Starts moving an app (by package) or a pinned app (by its Continue Watching key). */

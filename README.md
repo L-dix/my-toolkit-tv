@@ -4,10 +4,10 @@ A personal home screen (launcher) for Google TV and Android TV, built with Jetpa
 
 ## Features
 
-- **Clock header**: the time, date and current weather in Paris (Open-Meteo, refreshed every 30 minutes; the city is in `WeatherSource`) on one compact line, with quick buttons for sorting the apps (streaming first, or A to Z), audio output and system settings.
+- **Clock header**: the time, date and current weather in Paris (Open-Meteo, refreshed every 30 minutes; the city is in `WeatherSource`) on one compact line, with quick buttons for Toolkit's options, sorting the apps (streaming first, or A to Z), audio output and system settings.
 - **Audio output picker**: opens Google TV's own audio output menu to switch between TV speakers, HDMI, and Bluetooth devices.
 - **Continue Watching**: shortcuts to apps you pin (long-press OK on an app › **Pin to Continue Watching**); pinned apps can be moved or unpinned from their own menu. By default it holds YouTube, Kick and a video player (VLC, MX Player, Kodi…) when installed, and the app grid starts with the streaming apps (HBO Max, Apple TV, Netflix, Molotov, CANAL+…). Both lists are in `HomeDefaults.kt`.
-- **Kick shortcut**: hold the **1** key for 2 seconds on the home screen to open the Kick channel set in `KICK_CHANNEL_LINKS` (`HomeDefaults.kt`).
+- **Remote shortcuts** (on the home screen): hold **1** for 2 seconds to open a Kick channel, **3** for 2 seconds to play a YouTube playlist. Both are set in Toolkit's options (header button), by pasting a link; defaults in `Shortcuts.kt`.
 - **Easter egg**: hold the **2** key for 4 seconds on the home screen for a turning rainbow border; hold it again to remove it.
 - **App grid**: apps shown as their TV banners (or their icon on a deep red tile), with a soft glow on focus.
 - **App menu** (long-press OK on an app): move it to reorder the grid, hide it in **More Apps**, open App info, force stop, or uninstall.
