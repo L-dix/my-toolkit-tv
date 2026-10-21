@@ -72,9 +72,6 @@ private const val COLUMNS = 5
 private const val MORE_APPS_KEY = "toolkit:more-apps"
 private const val WATCH_TITLE_KEY = "toolkit:continue-watching-title"
 private const val APPS_TITLE_KEY = "toolkit:apps-title"
-private const val KICK_HOLD_MS = 2_000L
-private const val PLAYLIST_HOLD_MS = 2_000L
-private const val RAINBOW_HOLD_MS = 4_000L
 
 /** The pending "held long enough" timer of a held digit key. */
 private class HoldTimer(var job: Job? = null)
@@ -129,19 +126,20 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         requesterFor(target).requestFocusWhenReady()
     }
 
-    // Held digit keys: 1 for 2 seconds opens the Kick channel, 3 for 2 seconds the YouTube
-    // playlist, and 2 for 4 seconds (easter egg) turns the rainbow border on or off.
+    // Held digit keys: 1 opens the Kick channel, 3 the YouTube playlist, and 2 (easter egg)
+    // turns the rainbow border on or off; how long to hold each is set in Toolkit's options.
     val heldDigits = Modifier.onPreviewKeyEvent { event ->
+        val shortcuts = viewModel.shortcuts.value
         val (holdMs, action) = when (event.nativeKeyEvent.keyCode) {
-            android.view.KeyEvent.KEYCODE_1, android.view.KeyEvent.KEYCODE_NUMPAD_1 -> KICK_HOLD_MS to {
+            android.view.KeyEvent.KEYCODE_1, android.view.KeyEvent.KEYCODE_NUMPAD_1 -> shortcuts.kickHoldMs to {
                 val channel = viewModel.shortcuts.value.kickChannel
                 AppActions.openInApp(context, viewModel.packageOf(HomeDefaults.KICK), Shortcuts.kickLinks(channel), "Kick")
             }
-            android.view.KeyEvent.KEYCODE_3, android.view.KeyEvent.KEYCODE_NUMPAD_3 -> PLAYLIST_HOLD_MS to {
+            android.view.KeyEvent.KEYCODE_3, android.view.KeyEvent.KEYCODE_NUMPAD_3 -> shortcuts.playlistHoldMs to {
                 val playlist = viewModel.shortcuts.value.youtubePlaylist
                 AppActions.openInApp(context, viewModel.packageOf(HomeDefaults.YOUTUBE), Shortcuts.youtubeLinks(playlist), "YouTube")
             }
-            android.view.KeyEvent.KEYCODE_2, android.view.KeyEvent.KEYCODE_NUMPAD_2 -> RAINBOW_HOLD_MS to {
+            android.view.KeyEvent.KEYCODE_2, android.view.KeyEvent.KEYCODE_NUMPAD_2 -> shortcuts.rainbowHoldMs to {
                 viewModel.toggleRainbow()
             }
             else -> return@onPreviewKeyEvent false
@@ -303,6 +301,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             onDismiss = { showOptions = false },
             onKickChannel = viewModel::setKickChannel,
             onYoutubePlaylist = viewModel::setYoutubePlaylist,
+            onHoldDurations = viewModel::setHoldDurations,
         )
     }
 

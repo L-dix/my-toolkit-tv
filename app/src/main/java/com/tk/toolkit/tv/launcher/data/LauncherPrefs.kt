@@ -43,6 +43,17 @@ class LauncherPrefs(context: Context) {
         get() = prefs.getString(KEY_YOUTUBE_PLAYLIST, null) ?: Shortcuts.DEFAULT_YOUTUBE_PLAYLIST
         set(value) = prefs.edit { putString(KEY_YOUTUBE_PLAYLIST, value) }
 
+    /** How long 1 (Kick), 2 (rainbow) and 3 (YouTube) must be held. */
+    var kickHoldMs: Long
+        get() = prefs.getLong(KEY_KICK_HOLD, Shortcuts.DEFAULT_KICK_HOLD_MS)
+        set(value) = prefs.edit { putLong(KEY_KICK_HOLD, value) }
+    var rainbowHoldMs: Long
+        get() = prefs.getLong(KEY_RAINBOW_HOLD, Shortcuts.DEFAULT_RAINBOW_HOLD_MS)
+        set(value) = prefs.edit { putLong(KEY_RAINBOW_HOLD, value) }
+    var playlistHoldMs: Long
+        get() = prefs.getLong(KEY_PLAYLIST_HOLD, Shortcuts.DEFAULT_PLAYLIST_HOLD_MS)
+        set(value) = prefs.edit { putLong(KEY_PLAYLIST_HOLD, value) }
+
     /** Name of the clock header's ClockFont. */
     var clockFont: String?
         get() = prefs.getString(KEY_CLOCK_FONT, null)
@@ -76,6 +87,9 @@ class LauncherPrefs(context: Context) {
         const val KEY_RAINBOW = "rainbow_border"
         const val KEY_KICK_CHANNEL = "kick_channel"
         const val KEY_CLOCK_FONT = "clock_font"
+        const val KEY_KICK_HOLD = "kick_hold_ms"
+        const val KEY_RAINBOW_HOLD = "rainbow_hold_ms"
+        const val KEY_PLAYLIST_HOLD = "playlist_hold_ms"
         const val KEY_YOUTUBE_PLAYLIST = "youtube_playlist"
     }
 }

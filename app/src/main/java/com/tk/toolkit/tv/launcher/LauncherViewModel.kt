@@ -33,8 +33,14 @@ data class LauncherState(
     val movingKey: String? = null,
 )
 
-/** Targets of the held-digit shortcuts, editable in Toolkit's options. */
-data class ShortcutSettings(val kickChannel: String, val youtubePlaylist: String)
+/** Targets and hold durations of the held-digit shortcuts, editable in Toolkit's options. */
+data class ShortcutSettings(
+    val kickChannel: String,
+    val youtubePlaylist: String,
+    val kickHoldMs: Long,
+    val rainbowHoldMs: Long,
+    val playlistHoldMs: Long,
+)
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -49,7 +55,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Easter egg: rainbow border around the home screen, toggled by holding 2 for 4 seconds. */
     val rainbow: StateFlow<Boolean> = _rainbow.asStateFlow()
 
-    private val _shortcuts = MutableStateFlow(ShortcutSettings(prefs.kickChannel, prefs.youtubePlaylist))
+    private val _shortcuts = MutableStateFlow(
+        ShortcutSettings(
+            prefs.kickChannel,
+            prefs.youtubePlaylist,
+            prefs.kickHoldMs,
+            prefs.rainbowHoldMs,
+            prefs.playlistHoldMs,
+        )
+    )
     val shortcuts: StateFlow<ShortcutSettings> = _shortcuts.asStateFlow()
 
     private val _clockFont = MutableStateFlow(ClockFont.fromName(prefs.clockFont))
@@ -132,6 +146,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setKickChannel(channel: String) {
         prefs.kickChannel = channel
         _shortcuts.update { it.copy(kickChannel = channel) }
+    }
+
+    fun setHoldDurations(kickMs: Long, rainbowMs: Long, playlistMs: Long) {
+        prefs.kickHoldMs = kickMs
+        prefs.rainbowHoldMs = rainbowMs
+        prefs.playlistHoldMs = playlistMs
+        _shortcuts.update { it.copy(kickHoldMs = kickMs, rainbowHoldMs = rainbowMs, playlistHoldMs = playlistMs) }
     }
 
     fun setYoutubePlaylist(playlist: String) {

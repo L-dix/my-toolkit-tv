@@ -10,6 +10,11 @@ object Shortcuts {
     /** "R&B sexy" playlist. */
     const val DEFAULT_YOUTUBE_PLAYLIST = "PL5k1xh3AerewrFvNr2i8pNJU-4QNameEt"
 
+    /** How long 1, 2 and 3 must be held, by default. */
+    const val DEFAULT_KICK_HOLD_MS = 2_000L
+    const val DEFAULT_RAINBOW_HOLD_MS = 4_000L
+    const val DEFAULT_PLAYLIST_HOLD_MS = 2_000L
+
     /** Kick doesn't document its deep links, so these forms are tried in order, inside Kick. */
     fun kickLinks(channel: String) = listOf(
         "https://kick.com/$channel",

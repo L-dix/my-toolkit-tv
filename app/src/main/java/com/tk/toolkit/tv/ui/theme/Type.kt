@@ -18,14 +18,51 @@ val Heros = FontFamily(
     Font(R.font.toolkit_heros_bold, FontWeight.Bold),
 )
 
-/** Choices for the clock header's font, in Toolkit's options. The system ones come with the TV. */
-enum class ClockFont(val label: String, val family: FontFamily, val timeWeight: FontWeight) {
-    Helvetica("Helvetica", Heros, FontWeight.Normal),
-    System("Système", FontFamily.SansSerif, FontWeight.Normal),
-    Thin("Fine", FontFamily.SansSerif, FontWeight.Thin),
-    Condensed("Condensée", systemFamily("sans-serif-condensed"), FontWeight.Normal),
-    Serif("Serif", FontFamily.Serif, FontWeight.Normal),
-    Monospace("Machine à écrire", FontFamily.Monospace, FontWeight.Normal),
+/**
+ * Choices for the clock header's font, in Toolkit's options. The system ones come with the TV;
+ * the bold sans-serifs are bundled (SIL Open Font License, see third_party/fonts) as a single
+ * bold weight, used for the time and the date alike.
+ */
+enum class ClockFont(
+    val label: String,
+    val family: FontFamily,
+    val timeWeight: FontWeight = FontWeight.Bold,
+    val dateWeight: FontWeight = FontWeight.Bold,
+) {
+    Helvetica("Helvetica", Heros, FontWeight.Normal, FontWeight.Normal),
+    HelveticaBold("Helvetica gras", Heros),
+    System("Système", FontFamily.SansSerif, FontWeight.Normal, FontWeight.Normal),
+    SystemBold("Système gras", FontFamily.SansSerif),
+    SystemBlack("Système noir", FontFamily.SansSerif, FontWeight.Black, FontWeight.Bold),
+    Thin("Fine", FontFamily.SansSerif, FontWeight.Thin, FontWeight.Light),
+    Condensed("Condensée", systemFamily("sans-serif-condensed"), FontWeight.Normal, FontWeight.Normal),
+    CondensedBold("Condensée grasse", systemFamily("sans-serif-condensed")),
+    Anton("Anton", bundled(R.font.clock_anton)),
+    ArchivoBlack("Archivo Black", bundled(R.font.clock_archivo_black)),
+    Barlow("Barlow", bundled(R.font.clock_barlow)),
+    BarlowCondensed("Barlow Condensed", bundled(R.font.clock_barlow_condensed)),
+    Bebas("Bebas Neue", bundled(R.font.clock_bebas)),
+    DmSans("DM Sans", bundled(R.font.clock_dm_sans)),
+    Exo2("Exo 2", bundled(R.font.clock_exo2)),
+    Figtree("Figtree", bundled(R.font.clock_figtree)),
+    Inter("Inter", bundled(R.font.clock_inter)),
+    Jakarta("Plus Jakarta Sans", bundled(R.font.clock_jakarta)),
+    Kanit("Kanit", bundled(R.font.clock_kanit)),
+    Lexend("Lexend", bundled(R.font.clock_lexend)),
+    Manrope("Manrope", bundled(R.font.clock_manrope)),
+    Montserrat("Montserrat", bundled(R.font.clock_montserrat)),
+    Nunito("Nunito", bundled(R.font.clock_nunito)),
+    Oswald("Oswald", bundled(R.font.clock_oswald)),
+    Outfit("Outfit", bundled(R.font.clock_outfit)),
+    Poppins("Poppins", bundled(R.font.clock_poppins)),
+    Rubik("Rubik", bundled(R.font.clock_rubik)),
+    Sora("Sora", bundled(R.font.clock_sora)),
+    SpaceGrotesk("Space Grotesk", bundled(R.font.clock_space_grotesk)),
+    Teko("Teko", bundled(R.font.clock_teko)),
+    Urbanist("Urbanist", bundled(R.font.clock_urbanist)),
+    WorkSans("Work Sans", bundled(R.font.clock_work_sans)),
+    Serif("Serif", FontFamily.Serif, FontWeight.Normal, FontWeight.Normal),
+    Monospace("Machine à écrire", FontFamily.Monospace, FontWeight.Normal, FontWeight.Normal),
     ;
 
     companion object {
@@ -34,6 +71,8 @@ enum class ClockFont(val label: String, val family: FontFamily, val timeWeight: 
         fun fromName(name: String?): ClockFont = entries.firstOrNull { it.name == name } ?: Default
     }
 }
+
+private fun bundled(font: Int) = FontFamily(Font(font, FontWeight.Bold))
 
 private fun systemFamily(name: String) =
     FontFamily(Typeface(android.graphics.Typeface.create(name, android.graphics.Typeface.NORMAL)))

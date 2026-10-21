@@ -41,7 +41,7 @@ class InstallerActivity : Activity() {
         val pad = (48 * density).toInt()
         val gap = (20 * density).toInt()
         val title = TextView(this).apply {
-            text = getString(R.string.app_name)
+            text = "${getString(R.string.app_name)} ${BuildConfig.VERSION_NAME}"
             textSize = 30f
             setTextColor(Color.WHITE)
         }

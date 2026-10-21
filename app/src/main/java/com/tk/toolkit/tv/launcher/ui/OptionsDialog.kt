@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,6 +27,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -32,7 +36,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ListItem
@@ -58,8 +61,11 @@ fun OptionsDialog(
     onDismiss: () -> Unit,
     onKickChannel: (String) -> Unit,
     onYoutubePlaylist: (String) -> Unit,
+    onHoldDurations: (kickMs: Long, rainbowMs: Long, playlistMs: Long) -> Unit,
 ) {
     var editing by remember { mutableStateOf<Field?>(null) }
+    val context = LocalContext.current
+    val versions = remember { installedVersions(context) }
     val firstAction = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstAction.requestFocus() } }
 
@@ -79,8 +85,14 @@ fun OptionsDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = ToolkitColors.OnSurfaceMuted,
                 )
+                Text(versions, style = MaterialTheme.typography.bodyMedium, color = ToolkitColors.OnSurfaceMuted)
             }
-            Column(Modifier.padding(12.dp)) {
+            Column(
+                Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(12.dp),
+            ) {
                 ActionItem(
                     "Police de l'heure et de la date",
                     clockFont.label,
@@ -97,6 +109,16 @@ fun OptionsDialog(
                     "youtube.com/playlist?list=${settings.youtubePlaylist}",
                     { editing = Field.Playlist },
                 )
+                // OK steps through the durations, so no extra dialog is needed.
+                ActionItem("Durée d'appui · touche 1 (Kick)", holdLabel(settings.kickHoldMs), {
+                    onHoldDurations(nextHold(settings.kickHoldMs), settings.rainbowHoldMs, settings.playlistHoldMs)
+                })
+                ActionItem("Durée d'appui · touche 2 (arc-en-ciel)", holdLabel(settings.rainbowHoldMs), {
+                    onHoldDurations(settings.kickHoldMs, nextHold(settings.rainbowHoldMs), settings.playlistHoldMs)
+                })
+                ActionItem("Durée d'appui · touche 3 (YouTube)", holdLabel(settings.playlistHoldMs), {
+                    onHoldDurations(settings.kickHoldMs, settings.rainbowHoldMs, nextHold(settings.playlistHoldMs))
+                })
             }
         }
     }
@@ -127,6 +149,22 @@ fun OptionsDialog(
     }
 }
 
+/** "Toolkit 1.0.16 · Installer 1.0.12", to spot an app that wasn't updated. */
+private fun installedVersions(context: android.content.Context): String {
+    fun version(pkg: String) = runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()
+    val installer = version("com.tk.toolkit.tv.installer")?.let { "Installer $it" } ?: "Installer absent"
+    return "Toolkit ${version(context.packageName) ?: "?"} · $installer"
+}
+
+private val HoldSteps = listOf(500L, 1_000L, 1_500L, 2_000L, 3_000L, 4_000L, 5_000L)
+
+private fun nextHold(current: Long): Long = HoldSteps.firstOrNull { it > current } ?: HoldSteps.first()
+
+private fun holdLabel(ms: Long): String {
+    val seconds = if (ms % 1_000L == 0L) "${ms / 1_000L}" else "%.1f".format(ms / 1_000f).replace('.', ',')
+    return "$seconds s · OK pour changer"
+}
+
 /** Each font previewed as the header would show it; the current one is checked. */
 @Composable
 private fun FontPickerDialog(current: ClockFont, onDismiss: () -> Unit, onPick: (ClockFont) -> Unit) {
@@ -148,7 +186,12 @@ private fun FontPickerDialog(current: ClockFont, onDismiss: () -> Unit, onPick: 
                 color = ToolkitColors.OnSurface,
                 modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp),
             )
-            Column(Modifier.padding(12.dp)) {
+            Column(
+                Modifier
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(12.dp),
+            ) {
                 ClockFont.entries.forEach { font ->
                     ListItem(
                         selected = font == current,
@@ -169,7 +212,7 @@ private fun FontPickerDialog(current: ClockFont, onDismiss: () -> Unit, onPick: 
                                 if (font == current) "${font.label} · actuelle" else font.label,
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontFamily = font.family,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = font.dateWeight,
                                 ),
                             )
                         },

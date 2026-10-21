@@ -76,7 +76,7 @@ fun ClockHeader(
             clock.meridiem?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 13.sp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = font.family, fontWeight = font.dateWeight, fontSize = 13.sp),
                     color = ToolkitColors.OnSurfaceMuted,
                     modifier = Modifier.padding(start = 5.dp, bottom = 5.dp),
                 )
@@ -101,7 +101,7 @@ fun ClockHeader(
             )
             Text(
                 clock.date,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = font.dateWeight, fontSize = 14.sp, letterSpacing = 0.sp),
                 color = ToolkitColors.OnSurfaceMuted,
             )
         }
@@ -139,7 +139,7 @@ private fun WeatherBlock(weather: Weather, font: ClockFont) {
         )
         Text(
             listOf(weather.city, weather.description).filter { it.isNotEmpty() }.joinToString(" · "),
-            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = font.dateWeight, fontSize = 14.sp, letterSpacing = 0.sp),
             color = ToolkitColors.OnSurfaceMuted,
         )
     }
