@@ -85,6 +85,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rainbow by viewModel.rainbow.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
+    val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
     val keyHold = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
@@ -161,6 +162,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     Box(Modifier.fillMaxSize().then(heldDigits)) {
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
+                font = clockFont,
                 weather = weather,
                 onOpenOptions = { if (state.movingKey == null) showOptions = true },
                 onSortApps = { if (state.movingKey == null) showSort = true },
@@ -296,6 +298,8 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
         OptionsDialog(
             settings = shortcuts,
+            clockFont = clockFont,
+            onClockFont = viewModel::setClockFont,
             onDismiss = { showOptions = false },
             onKickChannel = viewModel::setKickChannel,
             onYoutubePlaylist = viewModel::setYoutubePlaylist,

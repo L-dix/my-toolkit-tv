@@ -43,6 +43,11 @@ class LauncherPrefs(context: Context) {
         get() = prefs.getString(KEY_YOUTUBE_PLAYLIST, null) ?: Shortcuts.DEFAULT_YOUTUBE_PLAYLIST
         set(value) = prefs.edit { putString(KEY_YOUTUBE_PLAYLIST, value) }
 
+    /** Name of the clock header's ClockFont. */
+    var clockFont: String?
+        get() = prefs.getString(KEY_CLOCK_FONT, null)
+        set(value) = prefs.edit { putString(KEY_CLOCK_FONT, value) }
+
     /** Easter egg: the rainbow border around the home screen. */
     var rainbowBorder: Boolean
         get() = prefs.getBoolean(KEY_RAINBOW, false)
@@ -70,6 +75,7 @@ class LauncherPrefs(context: Context) {
         const val KEY_PINNED = "pinned"
         const val KEY_RAINBOW = "rainbow_border"
         const val KEY_KICK_CHANNEL = "kick_channel"
+        const val KEY_CLOCK_FONT = "clock_font"
         const val KEY_YOUTUBE_PLAYLIST = "youtube_playlist"
     }
 }

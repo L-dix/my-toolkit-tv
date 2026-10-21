@@ -4,6 +4,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Typeface
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Typography
 import com.tk.toolkit.tv.R
@@ -16,6 +17,26 @@ val Heros = FontFamily(
     Font(R.font.toolkit_heros_regular, FontWeight.Normal),
     Font(R.font.toolkit_heros_bold, FontWeight.Bold),
 )
+
+/** Choices for the clock header's font, in Toolkit's options. The system ones come with the TV. */
+enum class ClockFont(val label: String, val family: FontFamily, val timeWeight: FontWeight) {
+    Helvetica("Helvetica", Heros, FontWeight.Normal),
+    System("Système", FontFamily.SansSerif, FontWeight.Normal),
+    Thin("Fine", FontFamily.SansSerif, FontWeight.Thin),
+    Condensed("Condensée", systemFamily("sans-serif-condensed"), FontWeight.Normal),
+    Serif("Serif", FontFamily.Serif, FontWeight.Normal),
+    Monospace("Machine à écrire", FontFamily.Monospace, FontWeight.Normal),
+    ;
+
+    companion object {
+        val Default = Helvetica
+
+        fun fromName(name: String?): ClockFont = entries.firstOrNull { it.name == name } ?: Default
+    }
+}
+
+private fun systemFamily(name: String) =
+    FontFamily(Typeface(android.graphics.Typeface.create(name, android.graphics.Typeface.NORMAL)))
 
 val Typography = Typography(
     displayLarge = TextStyle(fontWeight = FontWeight.Light, fontSize = 64.sp, letterSpacing = (-1.5).sp),

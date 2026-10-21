@@ -10,6 +10,7 @@ import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.LauncherPrefs
 import com.tk.toolkit.tv.launcher.data.Weather
 import com.tk.toolkit.tv.launcher.data.WeatherSource
+import com.tk.toolkit.tv.ui.theme.ClockFont
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -50,6 +51,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _shortcuts = MutableStateFlow(ShortcutSettings(prefs.kickChannel, prefs.youtubePlaylist))
     val shortcuts: StateFlow<ShortcutSettings> = _shortcuts.asStateFlow()
+
+    private val _clockFont = MutableStateFlow(ClockFont.fromName(prefs.clockFont))
+
+    /** Font of the time, date and weather in the header, chosen in Toolkit's options. */
+    val clockFont: StateFlow<ClockFont> = _clockFont.asStateFlow()
+
+    fun setClockFont(font: ClockFont) {
+        prefs.clockFont = font.name
+        _clockFont.value = font
+    }
 
     private val _weather = MutableStateFlow<Weather?>(null)
 

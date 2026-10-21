@@ -33,7 +33,7 @@ import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.data.Weather
-import com.tk.toolkit.tv.ui.theme.Heros
+import com.tk.toolkit.tv.ui.theme.ClockFont
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -44,6 +44,7 @@ private data class ClockText(val time: String, val meridiem: String?, val weekda
 
 @Composable
 fun ClockHeader(
+    font: ClockFont,
     weather: Weather?,
     onOpenOptions: () -> Unit,
     onSortApps: () -> Unit,
@@ -65,8 +66,8 @@ fun ClockHeader(
             Text(
                 clock.time,
                 style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = Heros,
-                    fontWeight = FontWeight.Normal,
+                    fontFamily = font.family,
+                    fontWeight = font.timeWeight,
                     fontSize = 30.sp,
                     letterSpacing = (-0.5).sp,
                     brush = Brush.verticalGradient(listOf(ToolkitColors.OnSurface, ToolkitColors.Accent)),
@@ -75,7 +76,7 @@ fun ClockHeader(
             clock.meridiem?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 13.sp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 13.sp),
                     color = ToolkitColors.OnSurfaceMuted,
                     modifier = Modifier.padding(start = 5.dp, bottom = 5.dp),
                 )
@@ -91,7 +92,7 @@ fun ClockHeader(
             Text(
                 clock.weekday.uppercase(),
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = Heros,
+                    fontFamily = font.family,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     letterSpacing = 1.5.sp,
@@ -100,11 +101,11 @@ fun ClockHeader(
             )
             Text(
                 clock.date,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
                 color = ToolkitColors.OnSurfaceMuted,
             )
         }
-        weather?.let { WeatherBlock(it) }
+        weather?.let { WeatherBlock(it, font) }
         Spacer(Modifier.weight(1f))
         HeaderButton(Icons.Outlined.Tune, "Options de Toolkit", onOpenOptions)
         Spacer(Modifier.width(12.dp))
@@ -118,7 +119,7 @@ fun ClockHeader(
 
 /** "☁️ 12°" over "Paris · Couvert", set apart from the date by the same divider. */
 @Composable
-private fun WeatherBlock(weather: Weather) {
+private fun WeatherBlock(weather: Weather, font: ClockFont) {
     Spacer(
         Modifier
             .padding(horizontal = 16.dp)
@@ -129,7 +130,7 @@ private fun WeatherBlock(weather: Weather) {
         Text(
             "${weather.emoji} ${weather.temperature}°",
             style = MaterialTheme.typography.labelLarge.copy(
-                fontFamily = Heros,
+                fontFamily = font.family,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 letterSpacing = 0.sp,
@@ -138,7 +139,7 @@ private fun WeatherBlock(weather: Weather) {
         )
         Text(
             listOf(weather.city, weather.description).filter { it.isNotEmpty() }.joinToString(" · "),
-            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Heros, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = FontWeight.Normal, fontSize = 14.sp, letterSpacing = 0.sp),
             color = ToolkitColors.OnSurfaceMuted,
         )
     }

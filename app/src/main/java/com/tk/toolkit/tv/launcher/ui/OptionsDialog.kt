@@ -32,22 +32,29 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.ShortcutSettings
 import com.tk.toolkit.tv.launcher.data.Shortcuts
+import com.tk.toolkit.tv.ui.theme.ClockFont
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist }
+private enum class Field { Kick, Playlist, Font }
 
-/** Toolkit's own options: what the held 1 and 3 keys open. Styled like the app menu. */
+/** Toolkit's own options: the clock font and what the held 1 and 3 keys open. Styled like the app menu. */
 @Composable
 fun OptionsDialog(
     settings: ShortcutSettings,
+    clockFont: ClockFont,
+    onClockFont: (ClockFont) -> Unit,
     onDismiss: () -> Unit,
     onKickChannel: (String) -> Unit,
     onYoutubePlaylist: (String) -> Unit,
@@ -68,17 +75,22 @@ fun OptionsDialog(
             Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp)) {
                 Text("Options de Toolkit", style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
                 Text(
-                    "Raccourcis de la télécommande",
+                    "Affichage et raccourcis de la télécommande",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ToolkitColors.OnSurfaceMuted,
                 )
             }
             Column(Modifier.padding(12.dp)) {
                 ActionItem(
+                    "Police de l'heure et de la date",
+                    clockFont.label,
+                    { editing = Field.Font },
+                    Modifier.focusRequester(firstAction),
+                )
+                ActionItem(
                     "Chaîne Kick · touche 1",
                     "kick.com/${settings.kickChannel}",
                     { editing = Field.Kick },
-                    Modifier.focusRequester(firstAction),
                 )
                 ActionItem(
                     "Playlist YouTube · touche 3",
@@ -106,7 +118,75 @@ fun OptionsDialog(
             onDismiss = { editing = null },
             onSave = { onYoutubePlaylist(it); editing = null },
         )
+        Field.Font -> FontPickerDialog(
+            current = clockFont,
+            onDismiss = { editing = null },
+            onPick = { onClockFont(it); editing = null },
+        )
         null -> Unit
+    }
+}
+
+/** Each font previewed as the header would show it; the current one is checked. */
+@Composable
+private fun FontPickerDialog(current: ClockFont, onDismiss: () -> Unit, onPick: (ClockFont) -> Unit) {
+    val currentItem = remember { FocusRequester() }
+    LaunchedEffect(Unit) { currentItem.requestFocusWhenReady() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .width(440.dp)
+                .clip(PanelShape)
+                .background(ToolkitColors.SurfaceRaised)
+                .border(1.dp, Color.White.copy(alpha = 0.08f), PanelShape)
+                .ignoreHeldSelectKey(),
+        ) {
+            Text(
+                "Police de l'heure et de la date",
+                style = MaterialTheme.typography.headlineSmall,
+                color = ToolkitColors.OnSurface,
+                modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp),
+            )
+            Column(Modifier.padding(12.dp)) {
+                ClockFont.entries.forEach { font ->
+                    ListItem(
+                        selected = font == current,
+                        onClick = { onPick(font) },
+                        modifier = if (font == current) Modifier.focusRequester(currentItem) else Modifier,
+                        headlineContent = {
+                            Text(
+                                "21:34",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = font.family,
+                                    fontWeight = font.timeWeight,
+                                    fontSize = 24.sp,
+                                ),
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                if (font == current) "${font.label} · actuelle" else font.label,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = font.family,
+                                    fontWeight = FontWeight.Normal,
+                                ),
+                            )
+                        },
+                        shape = ListItemDefaults.shape(RoundedCornerShape(14.dp)),
+                        scale = ListItemDefaults.scale(focusedScale = 1.02f),
+                        colors = ListItemDefaults.colors(
+                            containerColor = Color.Transparent,
+                            contentColor = ToolkitColors.OnSurface.copy(alpha = 0.7f),
+                            selectedContainerColor = ToolkitColors.Accent.copy(alpha = 0.12f),
+                            selectedContentColor = ToolkitColors.OnSurface,
+                            focusedContainerColor = ToolkitColors.OnSurface.copy(alpha = 0.12f),
+                            focusedContentColor = ToolkitColors.OnSurface,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 
