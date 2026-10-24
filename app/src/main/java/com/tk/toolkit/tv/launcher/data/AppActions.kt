@@ -50,6 +50,31 @@ object AppActions {
         }
     }
 
+    /**
+     * Opens [channel] in Kick: through a link if Kick handles one, else by starting Kick from its
+     * home screen and letting the accessibility service click the channel (or Following).
+     */
+    fun openKickChannel(context: Context, packageName: String?, channel: String) {
+        if (packageName == null) {
+            Toast.makeText(context, "Kick n'est pas installé", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val pm = context.packageManager
+        val link = Shortcuts.kickLinks(channel).asSequence()
+            .map { Intent(Intent.ACTION_VIEW, it.toUri()).setPackage(packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            .firstOrNull { it.resolveActivity(pm) != null }
+        if (link != null) {
+            context.safeStart(link)
+            return
+        }
+        val launch = (pm.getLeanbackLaunchIntentForPackage(packageName) ?: pm.getLaunchIntentForPackage(packageName))
+            // Restart Kick on its home screen, where the automation knows where it starts.
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ?: return Toast.makeText(context, "Impossible d'ouvrir Kick", Toast.LENGTH_SHORT).show()
+        val service = ToolkitAccessibilityService.instance
+        if (service != null) service.openKickChannel(packageName, channel, launch) else context.safeStart(launch)
+    }
+
     fun openSystemSettings(context: Context) =
         context.safeStart(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 

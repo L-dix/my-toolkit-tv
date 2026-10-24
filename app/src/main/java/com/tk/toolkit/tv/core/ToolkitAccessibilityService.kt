@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -20,6 +21,8 @@ import com.tk.toolkit.tv.launcher.data.LauncherPrefs
  *   holding it longer opens the stock home until Home is pressed again (both durations are
  *   set in Toolkit's options).
  * - Drives the system App info screen to press "Force stop" → "OK" after [forceStop].
+ * - Opens a Kick channel after [openKickChannel]: Kick's TV app takes no links, so once it's
+ *   open this clicks the channel's name, or the Following tab if the channel can't be found.
  */
 class ToolkitAccessibilityService : AccessibilityService() {
 
@@ -41,6 +44,13 @@ class ToolkitAccessibilityService : AccessibilityService() {
         openStockHome()
     }
 
+    /** Kick channel being opened by [openKickChannel], until it's clicked or time runs out. */
+    private class KickRequest(val packageName: String, val channel: String, val startedAt: Long)
+
+    private var kick: KickRequest? = null
+    private val kickFallback = Runnable { rootInActiveWindow?.let(::continueKick) }
+    private val kickGiveUp = Runnable { kick = null }
+
     override fun onServiceConnected() {
         instance = this
     }
@@ -61,6 +71,43 @@ class ToolkitAccessibilityService : AccessibilityService() {
             AppActions.appInfoIntent(packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         )
+    }
+
+    /**
+     * Starts Kick with [launch] (from its home screen), then clicks [channel] as soon as it shows
+     * up, or after a few seconds without it (offline channel) the Following tab.
+     */
+    fun openKickChannel(packageName: String, channel: String, launch: Intent) {
+        kick = KickRequest(packageName, channel, SystemClock.uptimeMillis())
+        watchPackage(packageName)
+        handler.removeCallbacks(kickFallback)
+        handler.removeCallbacks(kickGiveUp)
+        handler.postDelayed(kickFallback, KICK_CHANNEL_SEARCH_MS)
+        handler.postDelayed(kickGiveUp, KICK_GIVE_UP_MS)
+        startActivity(launch)
+    }
+
+    private fun continueKick(root: AccessibilityNodeInfo) {
+        val request = kick ?: return
+        if (root.packageName?.toString() != request.packageName) return
+        val channel = root.findAccessibilityNodeInfosByText(request.channel).firstOrNull()
+        val stillSearching = SystemClock.uptimeMillis() - request.startedAt < KICK_CHANNEL_SEARCH_MS
+        val node = channel ?: if (stillSearching) return else root.findByText(FOLLOWING_LABELS) ?: return
+        val clickable = node.clickableAncestor() ?: return
+        if (clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            kick = null
+            handler.removeCallbacks(kickFallback)
+            handler.removeCallbacks(kickGiveUp)
+        }
+    }
+
+    /** Adds [packageName] to the apps this service gets events from (accessibility_service.xml). */
+    private fun watchPackage(packageName: String) {
+        val info = serviceInfo ?: return
+        val watched = info.packageNames ?: return // null: every app already
+        if (packageName in watched) return
+        info.packageNames = watched + packageName
+        serviceInfo = info
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -89,6 +136,11 @@ class ToolkitAccessibilityService : AccessibilityService() {
             event.className?.toString() == STOCK_HOME_ACTIVITY
         ) {
             if (!stockHomeAllowed) openToolkit()
+            return
+        }
+        val request = kick
+        if (request != null && event.packageName?.toString() == request.packageName) {
+            rootInActiveWindow?.let(::continueKick)
             return
         }
         if (target == null) return
@@ -181,5 +233,10 @@ class ToolkitAccessibilityService : AccessibilityService() {
         // English and French system Settings (straight and typographic apostrophes).
         private val FORCE_STOP_LABELS = listOf("Force stop", "Forcer l'arrêt", "Forcer l’arrêt")
         private val CONFIRM_LABELS = listOf("OK")
+
+        /** How long to look for the channel's name before falling back to Following. */
+        private const val KICK_CHANNEL_SEARCH_MS = 5_000L
+        private const val KICK_GIVE_UP_MS = 12_000L
+        private val FOLLOWING_LABELS = listOf("Following", "Suivis", "Abonnements", "Chaînes suivies", "Suivi")
     }
 }

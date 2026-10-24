@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Toolkit</string>
-    <string name="accessibility_service_description">Le bouton Home ouvre Toolkit, et Toolkit peut appuyer à ta place sur « Forcer l\'arrêt » quand tu le choisis dans le menu d\'une appli. Le service ne réagit qu\'au bouton Home, à l\'accueil Google TV et à l\'appli Paramètres.</string>
+    <string name="accessibility_service_description">Le bouton Home ouvre Toolkit, et Toolkit peut appuyer à ta place sur « Forcer l\'arrêt » quand tu le choisis dans le menu d\'une appli. Il ouvre aussi la chaîne Kick du raccourci de la touche 1 en appuyant sur son nom dans l\'appli Kick. Le service ne réagit qu\'au bouton Home, à l\'accueil Google TV, à l\'appli Paramètres et à Kick.</string>
 </resources>
