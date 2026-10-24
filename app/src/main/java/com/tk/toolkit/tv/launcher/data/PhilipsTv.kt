@@ -219,14 +219,15 @@ class PhilipsTv(private val context: Context, private val prefs: LauncherPrefs) 
          * The TV's API uses a self-signed certificate. This trust-all factory is only ever used
          * for these requests, which go to the TV itself (loopback or its own LAN address).
          */
-        @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
         private val trustingSocketFactory: SSLSocketFactory by lazy {
-            val trustAll = object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-            }
-            SSLContext.getInstance("TLS").apply { init(null, arrayOf<TrustManager>(trustAll), SecureRandom()) }.socketFactory
+            SSLContext.getInstance("TLS").apply { init(null, arrayOf<TrustManager>(TrustAll()), SecureRandom()) }.socketFactory
         }
+    }
+
+    @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
+    private class TrustAll : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
 }
