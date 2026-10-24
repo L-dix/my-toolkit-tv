@@ -99,6 +99,66 @@ class LauncherPrefs(context: Context) {
             putString(KEY_WEATHER_DETAIL, value.weatherDetail.name)
         }
 
+    /** All settings as one text code ("TK1:" + compressed JSON, base64), to restore after a reinstall. */
+    fun exportBackup(): String {
+        val json = JSONObject()
+        for ((key, value) in prefs.all) {
+            val entry = when (value) {
+                is String -> JSONObject().put("s", value)
+                is Int -> JSONObject().put("i", value)
+                is Long -> JSONObject().put("l", value)
+                is Boolean -> JSONObject().put("b", value)
+                is Float -> JSONObject().put("f", value.toDouble())
+                is Set<*> -> JSONObject().put("set", JSONArray(value.map { it.toString() }))
+                else -> continue
+            }
+            json.put(key, entry)
+        }
+        val raw = json.toString().toByteArray()
+        val deflater = Deflater(Deflater.BEST_COMPRESSION).apply { setInput(raw); finish() }
+        val buffer = ByteArray(raw.size + 64)
+        val compressed = buffer.copyOf(deflater.deflate(buffer))
+        deflater.end()
+        return BACKUP_PREFIX + Base64.encodeToString(compressed, Base64.NO_WRAP or Base64.URL_SAFE)
+    }
+
+    /** Restores a code from [exportBackup]; false if it isn't one. */
+    fun importBackup(code: String): Boolean {
+        if (!code.trim().startsWith(BACKUP_PREFIX)) return false
+        val json = runCatching {
+            val compressed = Base64.decode(code.trim().removePrefix(BACKUP_PREFIX), Base64.NO_WRAP or Base64.URL_SAFE)
+            val inflater = Inflater().apply { setInput(compressed) }
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(4096)
+            while (!inflater.finished()) {
+                val n = inflater.inflate(buffer)
+                if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) break
+                out.write(buffer, 0, n)
+            }
+            inflater.end()
+            JSONObject(out.toString("UTF-8"))
+        }.getOrNull() ?: return false
+        prefs.edit {
+            clear()
+            for (key in json.keys()) {
+                if (key in OBSOLETE_KEYS) continue
+                val entry = json.getJSONObject(key)
+                when {
+                    entry.has("s") -> putString(key, entry.getString("s"))
+                    entry.has("i") -> putInt(key, entry.getInt("i"))
+                    entry.has("l") -> putLong(key, entry.getLong("l"))
+                    entry.has("b") -> putBoolean(key, entry.getBoolean("b"))
+                    entry.has("f") -> putFloat(key, entry.getDouble("f").toFloat())
+                    entry.has("set") -> {
+                        val array = entry.getJSONArray("set")
+                        putStringSet(key, (0 until array.length()).map { array.getString(it) }.toSet())
+                    }
+                }
+            }
+        }
+        return true
+    }
+
     /** Apps launched from Toolkit, most recent first. */
     fun recentPackages(): List<String> =
         prefs.getString(KEY_RECENT, null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
