@@ -23,6 +23,7 @@ object Shortcuts {
     fun kickLinks(channel: String) = listOf(
         "https://kick.com/$channel",
         "https://www.kick.com/$channel",
+        "https://kick.com/$channel/videos",
         "kick://$channel",
         "kick://channel/$channel",
         "kick://kick.com/$channel",

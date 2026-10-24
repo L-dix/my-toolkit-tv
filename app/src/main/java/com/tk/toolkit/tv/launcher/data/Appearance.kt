@@ -54,6 +54,12 @@ enum class WeatherDetail(val label: String) {
     Full("Complète (+ pluie et vent)"),
 }
 
+/** What starts after the screensaver delay. */
+enum class ScreensaverMode(val label: String) {
+    Tv("Celui de la TV (Ambilight / Google TV)"),
+    Toolkit("Toolkit : horloge, météo, bouteilles"),
+}
+
 /** Everything about the home screen's look, set in Toolkit's options; defaults are the original. */
 data class Appearance(
     val columns: Int = 5,
@@ -64,6 +70,7 @@ data class Appearance(
     val weatherCity: WeatherCity = WeatherCity.Paris,
     val weatherDetail: WeatherDetail = WeatherDetail.Simple,
     val screensaverOn: Boolean = true,
+    val screensaverMode: ScreensaverMode = ScreensaverMode.Tv,
     val screensaverDelayMs: Long = 5 * 60_000L,
     val screensaverBottles: Boolean = true,
 ) {

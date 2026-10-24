@@ -71,6 +71,7 @@ import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.NightMode
+import com.tk.toolkit.tv.launcher.data.ScreensaverMode
 import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
@@ -206,7 +207,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         if (!resumed) saverShown = false
         if (!resumed || !appearance.screensaverOn || dialogOpen || saverShown) return@LaunchedEffect
         delay(appearance.screensaverDelayMs)
-        saverShown = true
+        // The TV's own screensaver if chosen and available, else Toolkit's.
+        val tvSaver = appearance.screensaverMode == ScreensaverMode.Tv && AppActions.startSystemScreensaver(context)
+        if (!tvSaver) saverShown = true
     }
     val saverInput = Modifier.onPreviewKeyEvent { event ->
         lastInput = event.nativeKeyEvent.eventTime

@@ -80,6 +80,7 @@ class LauncherPrefs(context: Context) {
                 weatherCity = prefs.getString(KEY_WEATHER_CITY, null).toEnum(default.weatherCity),
                 weatherDetail = prefs.getString(KEY_WEATHER_DETAIL, null).toEnum(default.weatherDetail),
                 screensaverOn = prefs.getBoolean(KEY_SAVER_ON, default.screensaverOn),
+                screensaverMode = prefs.getString(KEY_SAVER_MODE, null).toEnum(default.screensaverMode),
                 screensaverDelayMs = prefs.getLong(KEY_SAVER_DELAY, default.screensaverDelayMs),
                 screensaverBottles = prefs.getBoolean(KEY_SAVER_BOTTLES, default.screensaverBottles),
             )
@@ -93,6 +94,7 @@ class LauncherPrefs(context: Context) {
             putString(KEY_WEATHER_CITY, value.weatherCity.name)
             putString(KEY_WEATHER_DETAIL, value.weatherDetail.name)
             putBoolean(KEY_SAVER_ON, value.screensaverOn)
+            putString(KEY_SAVER_MODE, value.screensaverMode.name)
             putLong(KEY_SAVER_DELAY, value.screensaverDelayMs)
             putBoolean(KEY_SAVER_BOTTLES, value.screensaverBottles)
         }
@@ -171,6 +173,7 @@ class LauncherPrefs(context: Context) {
         const val KEY_WEATHER_DETAIL = "weather_detail"
         const val KEY_SAVER_ON = "screensaver_on"
         const val KEY_SAVER_DELAY = "screensaver_delay_ms"
+        const val KEY_SAVER_MODE = "screensaver_mode"
         const val KEY_SAVER_BOTTLES = "screensaver_bottles"
         const val KEY_RECENT = "recent"
         const val MAX_RECENT = 10

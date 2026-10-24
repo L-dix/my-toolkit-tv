@@ -3,6 +3,8 @@ package com.tk.toolkit.tv.core
 import android.accessibilityservice.AccessibilityService
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -46,12 +48,30 @@ class ToolkitAccessibilityService : AccessibilityService() {
         openStockHome()
     }
 
+    /** Steps of opening a Kick channel: on screen, else through Kick's search, else Following. */
+    private enum class KickStep { FindOnScreen, OpenSearch, TypeQuery, PickResult, Following }
+
     /** Kick channel being opened by [openKickChannel], until it's clicked or time runs out. */
-    private class KickRequest(val packageName: String, val channel: String, val startedAt: Long)
+    private class KickRequest(val packageName: String, val channel: String, val startedAt: Long) {
+        var step = KickStep.FindOnScreen
+        var stepAt = startedAt
+        val log = mutableListOf<String>()
+    }
 
     private var kick: KickRequest? = null
-    private val kickFallback = Runnable { rootInActiveWindow?.let(::continueKick) }
-    private val kickGiveUp = Runnable { kick = null }
+
+    /** Kick doesn't always send events while loading, so its screen is also checked regularly. */
+    private val kickTick = object : Runnable {
+        override fun run() {
+            if (kick == null) return
+            rootInActiveWindow?.let(::continueKick)
+            if (kick != null) handler.postDelayed(this, KICK_TICK_MS)
+        }
+    }
+
+    /** What the last Kick shortcut did and saw, shown in Toolkit's options to fine-tune it. */
+    var lastKickReport: List<String> = emptyList()
+        private set
 
     /** Sleep timer: chosen length in minutes and when it ends (wall clock), or null when off. */
     var sleepMinutes: Int? = null
@@ -119,32 +139,118 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Starts Kick with [launch] (from its home screen), then clicks [channel] as soon as it shows
-     * up, or after a few seconds without it (offline channel) the Following tab.
+     * Starts Kick with [launch] (from its home screen), then: clicks [channel] as soon as it shows
+     * up; else opens Kick's search, types the channel and clicks the result; else clicks the
+     * Following tab (channel offline). Kick's TV app takes no links, so this is the only way in.
      */
     fun openKickChannel(packageName: String, channel: String, launch: Intent) {
-        kick = KickRequest(packageName, channel, SystemClock.uptimeMillis())
+        val now = SystemClock.uptimeMillis()
+        kick = KickRequest(packageName, channel, now).also { it.log += "Ouverture de Kick ($packageName)" }
         watchPackage(packageName)
-        handler.removeCallbacks(kickFallback)
-        handler.removeCallbacks(kickGiveUp)
-        handler.postDelayed(kickFallback, KICK_CHANNEL_SEARCH_MS)
-        handler.postDelayed(kickGiveUp, KICK_GIVE_UP_MS)
+        handler.removeCallbacks(kickTick)
+        handler.postDelayed(kickTick, KICK_TICK_MS)
         startActivity(launch)
     }
 
     private fun continueKick(root: AccessibilityNodeInfo) {
         val request = kick ?: return
         if (root.packageName?.toString() != request.packageName) return
-        val channel = root.findAccessibilityNodeInfosByText(request.channel).firstOrNull()
-        val stillSearching = SystemClock.uptimeMillis() - request.startedAt < KICK_CHANNEL_SEARCH_MS
-        val node = channel ?: if (stillSearching) return else root.findByText(FOLLOWING_LABELS) ?: return
-        val clickable = node.clickableAncestor() ?: return
-        if (clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-            kick = null
-            handler.removeCallbacks(kickFallback)
-            handler.removeCallbacks(kickGiveUp)
+        val now = SystemClock.uptimeMillis()
+        val sinceStep = now - request.stepAt
+        fun advance(step: KickStep) {
+            request.log += "${(now - request.startedAt) / 100 / 10.0} s : ${request.step} → $step"
+            request.step = step
+            request.stepAt = now
+        }
+        if (now - request.startedAt > KICK_GIVE_UP_MS) return finishKick(root, "Abandon : rien trouvé à cliquer")
+
+        // The channel's name anywhere on screen (but not typed in the search box) wins at every step.
+        root.findContaining(listOf(request.channel)).firstOrNull { !it.isEditable }?.let {
+            if (it.click()) return finishKick(root, "Chaîne « ${request.channel} » ouverte (${request.step})")
+        }
+        when (request.step) {
+            KickStep.FindOnScreen -> if (sinceStep > KICK_ON_SCREEN_MS) advance(KickStep.OpenSearch)
+            KickStep.OpenSearch -> {
+                val search = root.findContaining(SEARCH_LABELS).firstOrNull()
+                when {
+                    search?.click() == true -> advance(KickStep.TypeQuery)
+                    sinceStep > KICK_STEP_MS -> advance(KickStep.Following)
+                }
+            }
+            KickStep.TypeQuery -> {
+                val field = root.findFirst { it.isEditable }
+                when {
+                    field != null -> {
+                        field.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                        field.performAction(
+                            AccessibilityNodeInfo.ACTION_SET_TEXT,
+                            Bundle().apply {
+                                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, request.channel)
+                            },
+                        )
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                        }
+                        advance(KickStep.PickResult)
+                    }
+                    sinceStep > KICK_STEP_MS -> advance(KickStep.Following)
+                }
+            }
+            KickStep.PickResult -> if (sinceStep > KICK_STEP_MS) advance(KickStep.Following)
+            KickStep.Following -> {
+                val following = root.findByText(FOLLOWING_LABELS) ?: root.findContaining(FOLLOWING_LABELS).firstOrNull()
+                if (following?.click() == true) finishKick(root, "Chaîne introuvable : onglet Suivis ouvert")
+            }
         }
     }
+
+    /** Ends the Kick shortcut and keeps a report of the screen for Toolkit's options. */
+    private fun finishKick(root: AccessibilityNodeInfo, outcome: String) {
+        val request = kick ?: return
+        kick = null
+        handler.removeCallbacks(kickTick)
+        lastKickReport = listOf(outcome) + request.log + listOf("— Écran de Kick —") + root.describe()
+    }
+
+    /** One line per node with text, a description or an ID: what the Kick automation can aim at. */
+    private fun AccessibilityNodeInfo.describe(): List<String> {
+        val lines = mutableListOf<String>()
+        fun visit(node: AccessibilityNodeInfo?, depth: Int) {
+            if (node == null || lines.size >= KICK_REPORT_LINES) return
+            val text = node.text?.toString().orEmpty()
+            val description = node.contentDescription?.toString().orEmpty()
+            val id = node.viewIdResourceName?.substringAfter(":id/").orEmpty()
+            if (text.isNotEmpty() || description.isNotEmpty() || id.isNotEmpty()) {
+                val mark = when {
+                    node.isEditable -> "✎"
+                    node.isClickable -> "▶"
+                    node.isFocusable -> "◦"
+                    else -> "·"
+                }
+                lines += "  ".repeat(depth.coerceAtMost(6)) + "$mark " +
+                    listOf(text, description.takeIf { it != text }.orEmpty(), id.let { if (it.isEmpty()) "" else "#$it" })
+                        .filter { it.isNotEmpty() }.joinToString(" | ")
+            }
+            for (i in 0 until node.childCount) visit(node.getChild(i), depth + 1)
+        }
+        visit(this, 0)
+        return lines
+    }
+
+    /** Nodes whose text or description contains one of [labels] (ignoring case). */
+    private fun AccessibilityNodeInfo.findContaining(labels: List<String>): List<AccessibilityNodeInfo> =
+        labels.flatMap { findAccessibilityNodeInfosByText(it) }
+
+    private fun AccessibilityNodeInfo.findFirst(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
+        if (predicate(this)) return this
+        for (i in 0 until childCount) getChild(i)?.findFirst(predicate)?.let { return it }
+        return null
+    }
+
+    /** Clicks this node, or its nearest clickable parent (labels are often inside the button). */
+    private fun AccessibilityNodeInfo.click(): Boolean =
+        clickableAncestor()?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true ||
+            performAction(AccessibilityNodeInfo.ACTION_CLICK)
 
     /** Adds [packageName] to the apps this service gets events from (accessibility_service.xml). */
     private fun watchPackage(packageName: String) {
@@ -190,8 +296,8 @@ class ToolkitAccessibilityService : AccessibilityService() {
             if (!stockHomeAllowed) openToolkit()
             return
         }
-        val request = kick
-        if (request != null && event.packageName?.toString() == request.packageName) {
+        val kickRequest = kick
+        if (kickRequest != null && event.packageName?.toString() == kickRequest.packageName) {
             rootInActiveWindow?.let(::continueKick)
             return
         }
@@ -292,9 +398,13 @@ class ToolkitAccessibilityService : AccessibilityService() {
         /** Power menu entries that put the TV in standby, most specific first. */
         private val SLEEP_LABELS = listOf("Mise en veille", "Veille", "Sleep", "Standby", "Éteindre", "Power off")
 
-        /** How long to look for the channel's name before falling back to Following. */
-        private const val KICK_CHANNEL_SEARCH_MS = 5_000L
-        private const val KICK_GIVE_UP_MS = 12_000L
+        private const val KICK_TICK_MS = 700L
+        /** How long to look for the channel on Kick's home screen before trying its search. */
+        private const val KICK_ON_SCREEN_MS = 4_000L
+        private const val KICK_STEP_MS = 3_500L
+        private const val KICK_GIVE_UP_MS = 22_000L
+        private const val KICK_REPORT_LINES = 120
+        private val SEARCH_LABELS = listOf("Rechercher", "Recherche", "Search")
         private val FOLLOWING_LABELS = listOf("Following", "Suivis", "Abonnements", "Chaînes suivies", "Suivi")
     }
 }
