@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.toolkit.tv.launcher.data.Appearance
+import com.tk.toolkit.tv.launcher.data.AmbilightEffect
 import com.tk.toolkit.tv.launcher.data.AppRepository
+import com.tk.toolkit.tv.launcher.data.PhilipsTv
 import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
@@ -107,6 +109,58 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             _weather.value = null
             startWeather()
         }
+    }
+
+    private val tv = PhilipsTv(application, prefs)
+    private var pairing: PhilipsTv.PairState? = null
+    private var ambilightJob: Job? = null
+    private val _ambilightStatus = MutableStateFlow(if (tv.isPaired) "Associé" else "Non associé")
+
+    /** Pairing state of the TV's Ambilight API, as shown in the options. */
+    val ambilightStatus: StateFlow<String> = _ambilightStatus.asStateFlow()
+
+    /** Asks the TV to show a pairing code; [onCodeShown] then asks the user for it. */
+    fun startAmbilightPairing(onCodeShown: () -> Unit) {
+        _ambilightStatus.value = "Demande en cours…"
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { tv.pairRequest() } }
+            result.onSuccess {
+                pairing = it
+                _ambilightStatus.value = "Saisis le code affiché sur la TV"
+                onCodeShown()
+            }.onFailure { _ambilightStatus.value = "Échec : ${it.message}" }
+        }
+    }
+
+    fun finishAmbilightPairing(pin: String) {
+        val state = pairing ?: return
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { tv.pairGrant(state, pin) } }
+            _ambilightStatus.value = result.fold({ "Associé" }, { "Échec : ${it.message}" })
+            pairing = null
+        }
+    }
+
+    fun forgetAmbilight() {
+        stopAmbilightEffect()
+        tv.forget()
+        _ambilightStatus.value = "Non associé"
+    }
+
+    /** Plays the border animation on the Ambilight LEDs (screensaver, or a test of [maxMs]). */
+    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, force: Boolean = false) {
+        if (!tv.isPaired || (!force && !_appearance.value.ambilightEffect)) return
+        ambilightJob?.cancel()
+        ambilightJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                AmbilightEffect.run(tv, { _border.value }, { _appearance.value.ambilightIntensity }, maxMs)
+            }.onFailure { if (it !is kotlinx.coroutines.CancellationException) _ambilightStatus.value = "Associé · erreur : ${it.message}" }
+        }
+    }
+
+    fun stopAmbilightEffect() {
+        ambilightJob?.cancel()
+        ambilightJob = null
     }
 
     private val _weather = MutableStateFlow<Weather?>(null)
@@ -265,5 +319,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private companion object {
         const val WEATHER_REFRESH_MS = 30 * 60_000L
         const val WEATHER_RETRY_MS = 5 * 60_000L
+        const val AMBILIGHT_MAX_MS = 3 * 60 * 60_000L
     }
 }

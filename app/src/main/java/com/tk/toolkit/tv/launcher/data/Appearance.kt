@@ -73,9 +73,14 @@ data class Appearance(
     val screensaverMode: ScreensaverMode = ScreensaverMode.Tv,
     val screensaverDelayMs: Long = 5 * 60_000L,
     val screensaverBottles: Boolean = true,
+    /** Plays the hold-2 animation on the Ambilight LEDs during the screensaver (once paired). */
+    val ambilightEffect: Boolean = true,
+    /** Brightness of that effect, in percent: dimmed by default. */
+    val ambilightIntensity: Int = 35,
 ) {
     companion object {
         val COLUMN_CHOICES = listOf(3, 4, 5, 6, 7)
+        val AMBILIGHT_INTENSITIES = listOf(15, 25, 35, 50, 75, 100)
 
         /** Shortest delay is 30 seconds. */
         val SCREENSAVER_DELAYS = listOf(30_000L, 60_000L, 2 * 60_000L, 5 * 60_000L, 10 * 60_000L, 15 * 60_000L, 30 * 60_000L)

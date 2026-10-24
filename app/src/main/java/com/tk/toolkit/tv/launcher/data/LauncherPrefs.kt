@@ -83,6 +83,8 @@ class LauncherPrefs(context: Context) {
                 screensaverMode = prefs.getString(KEY_SAVER_MODE, null).toEnum(default.screensaverMode),
                 screensaverDelayMs = prefs.getLong(KEY_SAVER_DELAY, default.screensaverDelayMs),
                 screensaverBottles = prefs.getBoolean(KEY_SAVER_BOTTLES, default.screensaverBottles),
+                ambilightEffect = prefs.getBoolean(KEY_AMBILIGHT_EFFECT, default.ambilightEffect),
+                ambilightIntensity = prefs.getInt(KEY_AMBILIGHT_INTENSITY, default.ambilightIntensity),
             )
         }
         set(value) = prefs.edit {
@@ -97,7 +99,17 @@ class LauncherPrefs(context: Context) {
             putString(KEY_SAVER_MODE, value.screensaverMode.name)
             putLong(KEY_SAVER_DELAY, value.screensaverDelayMs)
             putBoolean(KEY_SAVER_BOTTLES, value.screensaverBottles)
+            putBoolean(KEY_AMBILIGHT_EFFECT, value.ambilightEffect)
+            putInt(KEY_AMBILIGHT_INTENSITY, value.ambilightIntensity)
         }
+
+    /** Credentials from pairing with the TV's local API (Ambilight control); null until paired. */
+    var philipsDeviceId: String?
+        get() = prefs.getString(KEY_PHILIPS_DEVICE, null)
+        set(value) = prefs.edit { putString(KEY_PHILIPS_DEVICE, value) }
+    var philipsAuthKey: String?
+        get() = prefs.getString(KEY_PHILIPS_AUTH, null)
+        set(value) = prefs.edit { putString(KEY_PHILIPS_AUTH, value) }
 
     /** Apps launched from Toolkit, most recent first. */
     fun recentPackages(): List<String> =
@@ -176,6 +188,10 @@ class LauncherPrefs(context: Context) {
         const val KEY_SAVER_MODE = "screensaver_mode"
         const val KEY_SAVER_BOTTLES = "screensaver_bottles"
         const val KEY_RECENT = "recent"
+        const val KEY_AMBILIGHT_EFFECT = "ambilight_effect"
+        const val KEY_AMBILIGHT_INTENSITY = "ambilight_intensity"
+        const val KEY_PHILIPS_DEVICE = "philips_device_id"
+        const val KEY_PHILIPS_AUTH = "philips_auth_key"
         const val MAX_RECENT = 10
         const val KEY_BORDER_STYLE = "border_style"
         const val KEY_BORDER_PALETTE = "border_palette"

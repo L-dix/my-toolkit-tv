@@ -55,6 +55,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -97,6 +98,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
     val border by viewModel.border.collectAsStateWithLifecycle()
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
+    val ambilightStatus by viewModel.ambilightStatus.collectAsStateWithLifecycle()
     val columns = appearance.columns
     SideEffect { ToolkitColors.Accent = appearance.accent.color }
     val keyHold = remember { HoldTimer() }
@@ -210,9 +212,15 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         // The TV's own screensaver if chosen and available, else Toolkit's.
         val tvSaver = appearance.screensaverMode == ScreensaverMode.Tv && AppActions.startSystemScreensaver(context)
         if (!tvSaver) saverShown = true
+        // The border animation on the Ambilight LEDs only, if paired and enabled.
+        viewModel.startAmbilightEffect()
     }
+    // Coming back from the TV's screensaver: the window gets the focus back.
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(windowFocused) { if (windowFocused) viewModel.stopAmbilightEffect() }
     val saverInput = Modifier.onPreviewKeyEvent { event ->
         lastInput = event.nativeKeyEvent.eventTime
+        viewModel.stopAmbilightEffect()
         when {
             saverShown -> {
                 saverShown = false
@@ -406,7 +414,12 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             rainbowOn = rainbow,
             border = border,
             appearance = appearance,
+            ambilightStatus = ambilightStatus,
             onDismiss = { showOptions = false },
+            onAmbilightPair = viewModel::startAmbilightPairing,
+            onAmbilightPin = viewModel::finishAmbilightPairing,
+            onAmbilightTest = { viewModel.startAmbilightEffect(maxMs = 15_000L, force = true) },
+            onAmbilightForget = viewModel::forgetAmbilight,
             onAppearance = viewModel::setAppearance,
             onClockFont = viewModel::setClockFont,
             onShortcuts = viewModel::setShortcuts,

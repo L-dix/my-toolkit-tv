@@ -11,6 +11,8 @@
 
     <!-- Only for the weather in the header (api.open-meteo.com, see WeatherSource). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- To reach the TV's own Ambilight API on its local address. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"

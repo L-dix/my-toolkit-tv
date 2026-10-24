@@ -68,7 +68,7 @@ import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist, Font, KickReport }
+private enum class Field { Kick, Playlist, Font, KickReport, AmbilightPin }
 
 /**
  * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
@@ -81,7 +81,12 @@ fun OptionsDialog(
     rainbowOn: Boolean,
     border: BorderSettings,
     appearance: Appearance,
+    ambilightStatus: String,
     onDismiss: () -> Unit,
+    onAmbilightPair: (onCodeShown: () -> Unit) -> Unit,
+    onAmbilightPin: (String) -> Unit,
+    onAmbilightTest: () -> Unit,
+    onAmbilightForget: () -> Unit,
     onAppearance: (Appearance) -> Unit,
     onClockFont: (ClockFont) -> Unit,
     onShortcuts: (ShortcutSettings) -> Unit,
@@ -167,6 +172,23 @@ fun OptionsDialog(
                     { onAppearance(appearance.copy(screensaverBottles = !appearance.screensaverBottles)) },
                 )
 
+                SectionLabel("Ambilight pendant l'économiseur")
+                ActionItem("Associer Toolkit à l'Ambilight", ambilightStatus, {
+                    onAmbilightPair { editing = Field.AmbilightPin }
+                })
+                ActionItem(
+                    "Effet sur l'Ambilight seulement",
+                    stepLabel(if (appearance.ambilightEffect) "Activé (style de l'animation touche 2)" else "Désactivé"),
+                    { onAppearance(appearance.copy(ambilightEffect = !appearance.ambilightEffect)) },
+                )
+                ActionItem("Intensité", stepLabel("${appearance.ambilightIntensity} %"), {
+                    onAppearance(
+                        appearance.copy(ambilightIntensity = next(Appearance.AMBILIGHT_INTENSITIES, appearance.ambilightIntensity))
+                    )
+                })
+                ActionItem("Tester 15 secondes", "Regarde autour de la TV", onAmbilightTest)
+                ActionItem("Oublier l'association", "À refaire si la TV a été réinitialisée", onAmbilightForget)
+
                 SectionLabel("Minuterie de veille")
                 SleepTimerItem()
 
@@ -239,6 +261,14 @@ fun OptionsDialog(
             parse = Shortcuts::parsePlaylistId,
             onDismiss = { editing = null },
             onSave = { onShortcuts(settings.copy(youtubePlaylist = it)); editing = null },
+        )
+        Field.AmbilightPin -> TextInputDialog(
+            title = "Code de la TV",
+            hint = "Saisis le code à 4 chiffres affiché sur la TV",
+            initial = "",
+            parse = { input -> input.trim().takeIf { it.matches(Regex("\\d{4,8}")) } },
+            onDismiss = { editing = null },
+            onSave = { onAmbilightPin(it); editing = null },
         )
         Field.KickReport -> ReportDialog(
             title = "Diagnostic Kick",
