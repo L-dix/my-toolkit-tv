@@ -10,10 +10,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -76,7 +72,7 @@ import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist, Font, KickReport, Backup, Restore }
+private enum class Field { Kick, Playlist, Font, Backup, Restore }
 
 /**
  * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
@@ -171,11 +167,6 @@ fun OptionsDialog(
                 SectionLabel("Raccourcis")
                 ActionItem("Chaîne Kick · touche 1", "kick.com/${settings.kickChannel}", { editing = Field.Kick })
                 ActionItem(
-                    "Diagnostic Kick",
-                    ToolkitAccessibilityService.instance?.lastKickReport?.firstOrNull() ?: "Maintiens 1, puis reviens ici",
-                    { editing = Field.KickReport },
-                )
-                ActionItem(
                     "Playlist YouTube · touche 3",
                     "youtube.com/playlist?list=${settings.youtubePlaylist}",
                     { editing = Field.Playlist },
@@ -255,12 +246,6 @@ fun OptionsDialog(
                 editing = null
             },
         )
-        Field.KickReport -> ReportDialog(
-            title = "Diagnostic Kick",
-            lines = ToolkitAccessibilityService.instance?.lastKickReport.orEmpty()
-                .ifEmpty { listOf("Rien pour l'instant : maintiens 1 sur l'accueil, attends que Kick s'ouvre, puis reviens ici.") },
-            onDismiss = { editing = null },
-        )
         Field.Font -> FontPickerDialog(
             current = clockFont,
             onDismiss = { editing = null },
@@ -324,45 +309,6 @@ private fun BackupDialog(code: String, onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 12.dp),
                 )
                 Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp).focusRequester(close)) { Text("Fermer") }
-            }
-        }
-    }
-}
-
-/** Read-only list (here, what the Kick shortcut saw), scrolled line by line with the arrows. */
-@Composable
-private fun ReportDialog(title: String, lines: List<String>, onDismiss: () -> Unit) {
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { first.requestFocusWhenReady() }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(
-            Modifier
-                .width(760.dp)
-                .clip(PanelShape)
-                .background(ToolkitColors.SurfaceRaised)
-                .border(1.dp, Color.White.copy(alpha = 0.08f), PanelShape)
-                .padding(24.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
-            Text(
-                "Prends une photo de cette liste pour Claude",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ToolkitColors.OnSurfaceMuted,
-            )
-            LazyColumn(Modifier.padding(top = 12.dp).heightIn(max = 400.dp)) {
-                itemsIndexed(lines) { index, line ->
-                    var focused by remember { mutableStateOf(false) }
-                    Text(
-                        line,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                        color = if (focused) ToolkitColors.OnSurface else ToolkitColors.OnSurfaceMuted,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (index == 0) Modifier.focusRequester(first) else Modifier)
-                            .onFocusChanged { focused = it.isFocused }
-                            .focusable(),
-                    )
-                }
             }
         }
     }

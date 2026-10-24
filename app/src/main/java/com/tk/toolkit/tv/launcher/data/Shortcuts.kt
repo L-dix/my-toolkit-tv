@@ -19,16 +19,6 @@ object Shortcuts {
     const val DEFAULT_HOME_QUICK_SETTINGS_MS = 600L
     const val DEFAULT_HOME_STOCK_HOME_MS = 4_000L
 
-    /** Kick doesn't document its deep links, so these forms are tried in order, inside Kick. */
-    fun kickLinks(channel: String) = listOf(
-        "https://kick.com/$channel",
-        "https://www.kick.com/$channel",
-        "https://kick.com/$channel/videos",
-        "kick://$channel",
-        "kick://channel/$channel",
-        "kick://kick.com/$channel",
-    )
-
     /** The YouTube TV app plays a /playlist link; the watch form is a fallback. */
     fun youtubeLinks(playlist: String) = listOf(
         "https://www.youtube.com/playlist?list=$playlist",
