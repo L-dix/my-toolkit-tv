@@ -1,16 +1,12 @@
 package com.tk.toolkit.tv.core
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.graphics.Rect
 import android.content.ActivityNotFoundException
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import androidx.core.content.ContextCompat
-import com.tk.toolkit.tv.launcher.data.AmbilightController
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -90,32 +86,12 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
     private val goToSleep = Runnable { sleepNow() }
 
-    /** The TV's own screensaver starting and stopping, to play the chosen Ambilight with it. */
-    private val dreamReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_DREAMING_STARTED -> AmbilightController.start(this@ToolkitAccessibilityService)
-                Intent.ACTION_DREAMING_STOPPED -> AmbilightController.stop()
-            }
-        }
-    }
-
     override fun onServiceConnected() {
         instance = this
-        ContextCompat.registerReceiver(
-            this,
-            dreamReceiver,
-            IntentFilter().apply {
-                addAction(Intent.ACTION_DREAMING_STARTED)
-                addAction(Intent.ACTION_DREAMING_STOPPED)
-            },
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
     }
 
     override fun onDestroy() {
         if (instance === this) instance = null
-        runCatching { unregisterReceiver(dreamReceiver) }
         super.onDestroy()
     }
 
@@ -171,7 +147,14 @@ class ToolkitAccessibilityService : AccessibilityService() {
      */
     fun openKickChannel(packageName: String, channel: String, launch: Intent) {
         val now = SystemClock.uptimeMillis()
-        kick = KickRequest(packageName, channel, now).also { it.log += "Ouverture de Kick ($packageName)" }
+        kick = KickRequest(packageName, channel, now).also {
+            it.log += "Ouverture de Kick ($packageName)"
+            it.log += if (canTap()) {
+                "Toucher l'écran : autorisé"
+            } else {
+                "Toucher l'écran : NON autorisé, désactive puis réactive Toolkit dans Paramètres › Accessibilité"
+            }
+        }
         watchPackage(packageName)
         handler.removeCallbacks(kickTick)
         handler.postDelayed(kickTick, KICK_TICK_MS)
@@ -199,8 +182,9 @@ class ToolkitAccessibilityService : AccessibilityService() {
             KickStep.OpenFollowing -> {
                 val following = root.findByText(FOLLOWING_LABELS) ?: root.findContaining(FOLLOWING_LABELS).firstOrNull()
                 when {
-                    following?.click() == true -> advance(KickStep.FindInFollowing)
-                    sinceStep > KICK_STEP_MS -> finishKick(root, "Onglet Suivis introuvable")
+                    following == null -> if (sinceStep > KICK_STEP_MS) finishKick(root, "Onglet Following introuvable")
+                    following.click() -> advance(KickStep.FindInFollowing)
+                    sinceStep > KICK_STEP_MS -> finishKick(root, "Following trouvé, mais le toucher n'a pas pu être envoyé")
                 }
             }
             KickStep.FindInFollowing -> if (sinceStep > KICK_FOLLOWING_MS) {
@@ -245,6 +229,10 @@ class ToolkitAccessibilityService : AccessibilityService() {
     /** Nodes whose text or description contains one of [labels] (ignoring case). */
     private fun AccessibilityNodeInfo.findContaining(labels: List<String>): List<AccessibilityNodeInfo> =
         labels.flatMap { findAccessibilityNodeInfosByText(it) }
+
+    /** Whether the system lets this service tap the screen (granted when the service is enabled). */
+    private fun canTap(): Boolean =
+        (serviceInfo?.capabilities ?: 0) and AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES != 0
 
     /**
      * Clicks this node or its nearest clickable parent; apps like Kick mark nothing as clickable,

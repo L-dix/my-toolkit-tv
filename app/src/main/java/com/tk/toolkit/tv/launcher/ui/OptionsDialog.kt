@@ -59,14 +59,10 @@ import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.ShortcutSettings
 import com.tk.toolkit.tv.core.ToolkitAccessibilityService
 import com.tk.toolkit.tv.launcher.data.AccentColor
-import com.tk.toolkit.tv.launcher.data.AmbilightController
-import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.BorderGlow
 import com.tk.toolkit.tv.launcher.data.HomeBackground
 import com.tk.toolkit.tv.launcher.data.NightMode
-import com.tk.toolkit.tv.launcher.data.SaverAmbilight
-import com.tk.toolkit.tv.launcher.data.ScreensaverMode
 import com.tk.toolkit.tv.launcher.data.WeatherCity
 import com.tk.toolkit.tv.launcher.data.WeatherDetail
 import com.tk.toolkit.tv.launcher.data.BorderPalette
@@ -80,7 +76,7 @@ import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist, Font, KickReport, AmbilightPin, Backup, Restore }
+private enum class Field { Kick, Playlist, Font, KickReport, Backup, Restore }
 
 /**
  * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
@@ -93,13 +89,7 @@ fun OptionsDialog(
     rainbowOn: Boolean,
     border: BorderSettings,
     appearance: Appearance,
-    ambilightStatus: String,
     onDismiss: () -> Unit,
-    onAmbilightPair: (onCodeShown: () -> Unit) -> Unit,
-    onAmbilightPin: (String) -> Unit,
-    onAmbilightTest: () -> Unit,
-    onAmbilightForget: () -> Unit,
-    onTestScreensaver: () -> Unit,
     onExportBackup: () -> String,
     onImportBackup: (String) -> Boolean,
     onAppearance: (Appearance) -> Unit,
@@ -168,50 +158,6 @@ fun OptionsDialog(
                 ActionItem("Revenir à la météo d'origine", "Paris, affichage simple", {
                     onAppearance(appearance.copy(weatherCity = WeatherCity.Paris, weatherDetail = WeatherDetail.Simple))
                 })
-
-                SectionLabel("Économiseur d'écran")
-                ActionItem("Économiseur", stepLabel(if (appearance.screensaverOn) "Activé" else "Désactivé"), {
-                    onAppearance(appearance.copy(screensaverOn = !appearance.screensaverOn))
-                })
-                ActionItem("Lequel", stepLabel(appearance.screensaverMode.label), {
-                    onAppearance(appearance.copy(screensaverMode = next(ScreensaverMode.entries, appearance.screensaverMode)))
-                })
-                ActionItem(
-                    "Régler l'économiseur de la TV",
-                    "Son délai et son contenu (il démarre seul, Toolkit ne peut pas le lancer)",
-                    { AppActions.openScreensaverSettings(context) },
-                )
-                ActionItem("Délai de l'économiseur Toolkit", holdLabel(appearance.screensaverDelayMs).let(::minutesLabel), {
-                    onAppearance(
-                        appearance.copy(screensaverDelayMs = nextStep(Appearance.SCREENSAVER_DELAYS, appearance.screensaverDelayMs))
-                    )
-                })
-                ActionItem("Lancer l'économiseur maintenant", "Pour tester, sans attendre le délai", onTestScreensaver)
-                ActionItem(
-                    "Bouteilles de Château Margaux",
-                    stepLabel(if (appearance.screensaverBottles) "Affichées" else "Masquées"),
-                    { onAppearance(appearance.copy(screensaverBottles = !appearance.screensaverBottles)) },
-                )
-
-                SectionLabel("Ambilight pendant l'économiseur")
-                ActionItem("Associer Toolkit à l'Ambilight", ambilightStatus, {
-                    onAmbilightPair { editing = Field.AmbilightPin }
-                })
-                ActionItem("Ambilight pendant l'économiseur", stepLabel(appearance.saverAmbilight.label), {
-                    onAppearance(appearance.copy(saverAmbilight = next(SaverAmbilight.entries, appearance.saverAmbilight)))
-                })
-                ActionItem("Puissance de l'animation Toolkit", stepLabel("${appearance.ambilightIntensity} %"), {
-                    onAppearance(
-                        appearance.copy(ambilightIntensity = next(Appearance.AMBILIGHT_INTENSITIES, appearance.ambilightIntensity))
-                    )
-                })
-                ActionItem(
-                    "Tester 15 secondes",
-                    AmbilightController.lastError?.let { "Dernière erreur : $it" }
-                        ?: "Le choix ci-dessus (l'animation Toolkit s'il est « inchangé »)",
-                    onAmbilightTest,
-                )
-                ActionItem("Oublier l'association", "À refaire si la TV a été réinitialisée", onAmbilightForget)
 
                 SectionLabel("Sauvegarde")
                 ActionItem("Sauvegarder mes réglages", "Un QR code et un texte à garder (notes de l'iPhone)", {
@@ -292,14 +238,6 @@ fun OptionsDialog(
             onDismiss = { editing = null },
             onSave = { onShortcuts(settings.copy(youtubePlaylist = it)); editing = null },
         )
-        Field.AmbilightPin -> TextInputDialog(
-            title = "Code de la TV",
-            hint = "Saisis le code à 4 chiffres affiché sur la TV",
-            initial = "",
-            parse = { input -> input.trim().takeIf { it.matches(Regex("\\d{4,8}")) } },
-            onDismiss = { editing = null },
-            onSave = { onAmbilightPin(it); editing = null },
-        )
         Field.Backup -> BackupDialog(code = remember { onExportBackup() }, onDismiss = { editing = null })
         Field.Restore -> TextInputDialog(
             title = "Restaurer des réglages",
@@ -372,7 +310,7 @@ private fun BackupDialog(code: String, onDismiss: () -> Unit) {
                 Text(
                     "Scanne le QR code avec l'appareil photo de l'iPhone, puis copie le texte dans tes notes. " +
                         "Pour restaurer : Options › Restaurer des réglages, et colle ce texte avec le clavier " +
-                        "de l'appli Google TV. Tout est inclus sauf l'association Ambilight.",
+                        "de l'appli Google TV.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ToolkitColors.OnSurfaceMuted,
                     modifier = Modifier.padding(top = 8.dp),
@@ -457,15 +395,6 @@ private fun nextStep(steps: List<Long>, current: Long): Long = steps.firstOrNull
 private fun <T> next(values: List<T>, current: T): T = values[(values.indexOf(current) + 1) % values.size]
 
 private fun stepLabel(value: String) = "$value · OK pour changer"
-
-/** "90 s · OK…" reads better as "1,5 min · OK…": seconds up to a minute, then minutes. */
-private fun minutesLabel(secondsLabel: String): String {
-    val seconds = secondsLabel.substringBefore(" s").replace(',', '.').toFloatOrNull() ?: return secondsLabel
-    if (seconds < 60f) return secondsLabel
-    val minutes = seconds / 60f
-    val text = if (minutes % 1f == 0f) "${minutes.toInt()} min" else "%.1f min".format(minutes).replace('.', ',')
-    return stepLabel(text)
-}
 
 private val SleepSteps = listOf<Int?>(null, 30, 60, 90, 120)
 

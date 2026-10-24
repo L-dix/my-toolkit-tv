@@ -35,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,13 +54,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -72,8 +67,6 @@ import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.NightMode
-import com.tk.toolkit.tv.launcher.data.SaverAmbilight
-import com.tk.toolkit.tv.launcher.data.ScreensaverMode
 import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
@@ -99,7 +92,6 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
     val border by viewModel.border.collectAsStateWithLifecycle()
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
-    val ambilightStatus by viewModel.ambilightStatus.collectAsStateWithLifecycle()
     val columns = appearance.columns
     SideEffect { ToolkitColors.Accent = appearance.accent.color }
     val keyHold = remember { HoldTimer() }
@@ -198,59 +190,6 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         true
     }
 
-    // Screensaver: shown after the chosen delay without any key, while Toolkit is on screen and
-    // no menu is open. The key that dismisses it does nothing else.
-    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val resumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
-    val dialogOpen = showOptions || showSort || showHidden || menuApp != null || menuPinnedApp != null
-    var lastInput by remember { mutableLongStateOf(0L) }
-    var saverShown by remember { mutableStateOf(false) }
-    var swallowUntilKeyUp by remember { mutableStateOf(false) }
-    // The TV's own screensaver starts by itself, after the delay set in the TV's settings (apps
-    // can't start it on most TVs); the accessibility service then plays the chosen Ambilight.
-    // Toolkit's screensaver is shown here, after its own delay.
-    fun startScreensaver() {
-        if (appearance.screensaverMode == ScreensaverMode.Tv) {
-            if (!AppActions.startSystemScreensaver(context)) {
-                android.widget.Toast.makeText(
-                    context,
-                    "La TV ne laisse pas une appli lancer son économiseur : il démarre seul après le délai " +
-                        "réglé dans ses Paramètres (Options › Régler l'économiseur de la TV).",
-                    android.widget.Toast.LENGTH_LONG,
-                ).show()
-            }
-            return
-        }
-        saverShown = true
-        viewModel.startAmbilightEffect()
-    }
-    LaunchedEffect(appearance.screensaverOn, appearance.screensaverMode, appearance.screensaverDelayMs, resumed, dialogOpen, lastInput) {
-        if (!resumed) saverShown = false
-        if (appearance.screensaverMode != ScreensaverMode.Toolkit) return@LaunchedEffect
-        if (!resumed || !appearance.screensaverOn || dialogOpen || saverShown) return@LaunchedEffect
-        delay(appearance.screensaverDelayMs)
-        startScreensaver()
-    }
-    // Coming back from the TV's screensaver: the window gets the focus back.
-    val windowFocused = LocalWindowInfo.current.isWindowFocused
-    LaunchedEffect(windowFocused) { if (windowFocused) viewModel.stopAmbilightEffect() }
-    val saverInput = Modifier.onPreviewKeyEvent { event ->
-        lastInput = event.nativeKeyEvent.eventTime
-        viewModel.stopAmbilightEffect()
-        when {
-            saverShown -> {
-                saverShown = false
-                swallowUntilKeyUp = event.type == KeyEventType.KeyDown
-                true
-            }
-            swallowUntilKeyUp -> {
-                if (event.type == KeyEventType.KeyUp) swallowUntilKeyUp = false
-                true
-            }
-            else -> false
-        }
-    }
-
     // Night mode dims everything, always or from 21:00 to 7:00 (checked every minute).
     val evening by produceState(isEvening()) {
         while (true) {
@@ -260,7 +199,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     }
     val dimmed = appearance.nightMode == NightMode.Always || (appearance.nightMode == NightMode.Evening && evening)
 
-    Box(Modifier.fillMaxSize().then(saverInput).then(heldDigits)) {
+    Box(Modifier.fillMaxSize().then(heldDigits)) {
         HomeBackdrop(appearance.background, appearance.accent.color)
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
@@ -407,7 +346,6 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         }
 
         if (dimmed) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
-        if (saverShown) Screensaver(clockFont, weather, appearance.screensaverBottles)
     }
 
     if (showHidden && state.hiddenApps.isNotEmpty()) {
@@ -430,26 +368,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             rainbowOn = rainbow,
             border = border,
             appearance = appearance,
-            ambilightStatus = ambilightStatus,
             onDismiss = { showOptions = false },
-            onAmbilightPair = viewModel::startAmbilightPairing,
-            onAmbilightPin = viewModel::finishAmbilightPairing,
-            onAmbilightTest = {
-                val choice = appearance.saverAmbilight.takeIf { it != SaverAmbilight.Tv } ?: SaverAmbilight.Toolkit
-                viewModel.startAmbilightEffect(maxMs = 15_000L, choice = choice)
-            },
-            onAmbilightForget = viewModel::forgetAmbilight,
-            // "Lancer l'économiseur maintenant": at once, even if turned off, once the options
-            // have closed and the focus is back.
             onExportBackup = viewModel::exportBackup,
             onImportBackup = viewModel::importBackup,
-            onTestScreensaver = {
-                showOptions = false
-                scope.launch {
-                    delay(400L)
-                    startScreensaver()
-                }
-            },
             onAppearance = viewModel::setAppearance,
             onClockFont = viewModel::setClockFont,
             onShortcuts = viewModel::setShortcuts,

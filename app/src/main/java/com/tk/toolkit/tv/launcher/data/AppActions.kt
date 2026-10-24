@@ -75,24 +75,6 @@ object AppActions {
         if (service != null) service.openKickChannel(packageName, channel, launch) else context.safeStart(launch)
     }
 
-    /**
-     * Starts the TV's own screensaver (Ambilight / Google TV ambient mode, as set in the TV's
-     * settings) through SystemUI's "start dreaming" screen. False if this TV doesn't have it.
-     */
-    fun startSystemScreensaver(context: Context): Boolean {
-        val intent = Intent(Intent.ACTION_MAIN)
-            .setClassName("com.android.systemui", "com.android.systemui.Somnambulator")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (intent.resolveActivity(context.packageManager) == null) return false
-        return runCatching { context.startActivity(intent) }.isSuccess
-    }
-
-    /** The TV's screensaver settings (its delay and what it shows), else the main settings. */
-    fun openScreensaverSettings(context: Context) {
-        val dream = Intent(Settings.ACTION_DREAM_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (dream.resolveActivity(context.packageManager) != null) context.safeStart(dream) else openSystemSettings(context)
-    }
-
     fun openSystemSettings(context: Context) =
         context.safeStart(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 

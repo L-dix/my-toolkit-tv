@@ -11,7 +11,10 @@ import java.util.zip.Inflater
 /** Persists the user's launcher customizations: app order, hidden apps and pinned Continue Watching apps. */
 class LauncherPrefs(context: Context) {
 
-    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE).apply {
+        // Settings of the removed screensaver and Ambilight features (versions 1.0.19 to 1.0.22).
+        if (OBSOLETE_KEYS.any { contains(it) }) edit { OBSOLETE_KEYS.forEach { remove(it) } }
+    }
 
     fun loadOrder(): List<String> =
         prefs.getString(KEY_ORDER, null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
@@ -72,7 +75,7 @@ class LauncherPrefs(context: Context) {
         get() = prefs.getString(KEY_CLOCK_FONT, null)
         set(value) = prefs.edit { putString(KEY_CLOCK_FONT, value) }
 
-    /** Home screen look, weather and screensaver; each part falls back to its default. */
+    /** Home screen look and weather; each part falls back to its default. */
     var appearance: Appearance
         get() {
             val default = Appearance()
@@ -84,12 +87,6 @@ class LauncherPrefs(context: Context) {
                 showRecent = prefs.getBoolean(KEY_SHOW_RECENT, default.showRecent),
                 weatherCity = prefs.getString(KEY_WEATHER_CITY, null).toEnum(default.weatherCity),
                 weatherDetail = prefs.getString(KEY_WEATHER_DETAIL, null).toEnum(default.weatherDetail),
-                screensaverOn = prefs.getBoolean(KEY_SAVER_ON, default.screensaverOn),
-                screensaverMode = prefs.getString(KEY_SAVER_MODE, null).toEnum(default.screensaverMode),
-                screensaverDelayMs = prefs.getLong(KEY_SAVER_DELAY, default.screensaverDelayMs),
-                screensaverBottles = prefs.getBoolean(KEY_SAVER_BOTTLES, default.screensaverBottles),
-                saverAmbilight = prefs.getString(KEY_SAVER_AMBILIGHT, null).toEnum(default.saverAmbilight),
-                ambilightIntensity = prefs.getInt(KEY_AMBILIGHT_INTENSITY, default.ambilightIntensity),
             )
         }
         set(value) = prefs.edit {
@@ -100,85 +97,7 @@ class LauncherPrefs(context: Context) {
             putBoolean(KEY_SHOW_RECENT, value.showRecent)
             putString(KEY_WEATHER_CITY, value.weatherCity.name)
             putString(KEY_WEATHER_DETAIL, value.weatherDetail.name)
-            putBoolean(KEY_SAVER_ON, value.screensaverOn)
-            putString(KEY_SAVER_MODE, value.screensaverMode.name)
-            putLong(KEY_SAVER_DELAY, value.screensaverDelayMs)
-            putBoolean(KEY_SAVER_BOTTLES, value.screensaverBottles)
-            putString(KEY_SAVER_AMBILIGHT, value.saverAmbilight.name)
-            putInt(KEY_AMBILIGHT_INTENSITY, value.ambilightIntensity)
         }
-
-    /** Credentials from pairing with the TV's local API (Ambilight control); null until paired. */
-    var philipsDeviceId: String?
-        get() = prefs.getString(KEY_PHILIPS_DEVICE, null)
-        set(value) = prefs.edit { putString(KEY_PHILIPS_DEVICE, value) }
-    var philipsAuthKey: String?
-        get() = prefs.getString(KEY_PHILIPS_AUTH, null)
-        set(value) = prefs.edit { putString(KEY_PHILIPS_AUTH, value) }
-
-    /**
-     * All settings as one text code ("TK1:" + compressed JSON, base64), to restore after a
-     * reinstall. The TV pairing credentials are left out.
-     */
-    fun exportBackup(): String {
-        val json = JSONObject()
-        for ((key, value) in prefs.all) {
-            if (key in NOT_BACKED_UP || value == null) continue
-            val entry = when (value) {
-                is String -> JSONObject().put("s", value)
-                is Int -> JSONObject().put("i", value)
-                is Long -> JSONObject().put("l", value)
-                is Boolean -> JSONObject().put("b", value)
-                is Float -> JSONObject().put("f", value.toDouble())
-                is Set<*> -> JSONObject().put("set", JSONArray(value.map { it.toString() }))
-                else -> continue
-            }
-            json.put(key, entry)
-        }
-        val raw = json.toString().toByteArray()
-        val deflater = Deflater(Deflater.BEST_COMPRESSION).apply { setInput(raw); finish() }
-        val buffer = ByteArray(raw.size + 64)
-        val compressed = buffer.copyOf(deflater.deflate(buffer))
-        deflater.end()
-        return BACKUP_PREFIX + Base64.encodeToString(compressed, Base64.NO_WRAP or Base64.URL_SAFE)
-    }
-
-    /** Restores a code from [exportBackup]; false if it isn't one. Keeps the TV pairing. */
-    fun importBackup(code: String): Boolean {
-        val json = runCatching {
-            val compressed = Base64.decode(code.trim().removePrefix(BACKUP_PREFIX), Base64.NO_WRAP or Base64.URL_SAFE)
-            val inflater = Inflater().apply { setInput(compressed) }
-            val out = java.io.ByteArrayOutputStream()
-            val buffer = ByteArray(4096)
-            while (!inflater.finished()) {
-                val n = inflater.inflate(buffer)
-                if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) break
-                out.write(buffer, 0, n)
-            }
-            inflater.end()
-            JSONObject(out.toString("UTF-8"))
-        }.getOrNull() ?: return false
-        if (!code.trim().startsWith(BACKUP_PREFIX)) return false
-        prefs.edit {
-            prefs.all.keys.filter { it !in NOT_BACKED_UP }.forEach { remove(it) }
-            for (key in json.keys()) {
-                if (key in NOT_BACKED_UP) continue
-                val entry = json.getJSONObject(key)
-                when {
-                    entry.has("s") -> putString(key, entry.getString("s"))
-                    entry.has("i") -> putInt(key, entry.getInt("i"))
-                    entry.has("l") -> putLong(key, entry.getLong("l"))
-                    entry.has("b") -> putBoolean(key, entry.getBoolean("b"))
-                    entry.has("f") -> putFloat(key, entry.getDouble("f").toFloat())
-                    entry.has("set") -> {
-                        val array = entry.getJSONArray("set")
-                        putStringSet(key, (0 until array.length()).map { array.getString(it) }.toSet())
-                    }
-                }
-            }
-        }
-        return true
-    }
 
     /** Apps launched from Toolkit, most recent first. */
     fun recentPackages(): List<String> =
@@ -252,17 +171,12 @@ class LauncherPrefs(context: Context) {
         const val KEY_SHOW_RECENT = "show_recent"
         const val KEY_WEATHER_CITY = "weather_city"
         const val KEY_WEATHER_DETAIL = "weather_detail"
-        const val KEY_SAVER_ON = "screensaver_on"
-        const val KEY_SAVER_DELAY = "screensaver_delay_ms"
-        const val KEY_SAVER_MODE = "screensaver_mode"
-        const val KEY_SAVER_BOTTLES = "screensaver_bottles"
         const val KEY_RECENT = "recent"
-        const val KEY_SAVER_AMBILIGHT = "saver_ambilight"
-        const val KEY_AMBILIGHT_INTENSITY = "ambilight_intensity"
-        const val KEY_PHILIPS_DEVICE = "philips_device_id"
-        const val KEY_PHILIPS_AUTH = "philips_auth_key"
         const val BACKUP_PREFIX = "TK1:"
-        val NOT_BACKED_UP = setOf(KEY_PHILIPS_DEVICE, KEY_PHILIPS_AUTH)
+        val OBSOLETE_KEYS = listOf(
+            "screensaver_on", "screensaver_delay_ms", "screensaver_mode", "screensaver_bottles",
+            "saver_ambilight", "ambilight_effect", "ambilight_intensity", "philips_device_id", "philips_auth_key",
+        )
         const val MAX_RECENT = 10
         const val KEY_BORDER_STYLE = "border_style"
         const val KEY_BORDER_PALETTE = "border_palette"

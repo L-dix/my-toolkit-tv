@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Toolkit</string>
-    <string name="accessibility_service_description">Le bouton Home ouvre Toolkit, et Toolkit peut appuyer à ta place sur « Forcer l\'arrêt » quand tu le choisis dans le menu d\'une appli. Il ouvre aussi la chaîne Kick du raccourci de la touche 1 en touchant son nom dans l\'appli Kick (geste simulé), et pilote l\'Ambilight pendant l\'économiseur de la TV. Le service ne réagit qu\'au bouton Home, à l\'accueil Google TV, à l\'appli Paramètres et à Kick.</string>
+    <string name="accessibility_service_description">Le bouton Home ouvre Toolkit, et Toolkit peut appuyer à ta place sur « Forcer l\'arrêt » quand tu le choisis dans le menu d\'une appli. Il ouvre aussi la chaîne Kick du raccourci de la touche 1 en touchant son nom dans l\'appli Kick (geste simulé). Le service ne réagit qu\'au bouton Home, à l\'accueil Google TV, à l\'appli Paramètres et à Kick.</string>
 </resources>

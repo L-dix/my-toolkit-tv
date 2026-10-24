@@ -5,7 +5,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.roundToInt
 
-/** Current weather and today's forecast, shown in the clock header and the screensaver. */
+/** Current weather and today's forecast, shown in the clock header. */
 data class Weather(
     val city: String,
     val temperature: Int,

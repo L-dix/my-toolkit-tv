@@ -4,10 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.toolkit.tv.launcher.data.Appearance
-import com.tk.toolkit.tv.launcher.data.AmbilightController
 import com.tk.toolkit.tv.launcher.data.AppRepository
-import com.tk.toolkit.tv.launcher.data.PhilipsTv
-import com.tk.toolkit.tv.launcher.data.SaverAmbilight
 import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
@@ -99,7 +96,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _appearance = MutableStateFlow(prefs.appearance)
 
-    /** Home screen look, weather and screensaver, set in Toolkit's options. */
+    /** Home screen look and weather, set in Toolkit's options. */
     val appearance: StateFlow<Appearance> = _appearance.asStateFlow()
 
     fun setAppearance(appearance: Appearance) {
@@ -109,35 +106,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (cityChanged) {
             _weather.value = null
             startWeather()
-        }
-    }
-
-    private val tv = PhilipsTv(application, prefs)
-    private var pairing: PhilipsTv.PairState? = null
-    private val _ambilightStatus = MutableStateFlow(if (tv.isPaired) "Associé" else "Non associé")
-
-    /** Pairing state of the TV's Ambilight API, as shown in the options. */
-    val ambilightStatus: StateFlow<String> = _ambilightStatus.asStateFlow()
-
-    /** Asks the TV to show a pairing code; [onCodeShown] then asks the user for it. */
-    fun startAmbilightPairing(onCodeShown: () -> Unit) {
-        _ambilightStatus.value = "Demande en cours…"
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { tv.pairRequest() } }
-            result.onSuccess {
-                pairing = it
-                _ambilightStatus.value = "Saisis le code affiché sur la TV"
-                onCodeShown()
-            }.onFailure { _ambilightStatus.value = "Échec : ${it.message}" }
-        }
-    }
-
-    fun finishAmbilightPairing(pin: String) {
-        val state = pairing ?: return
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { tv.pairGrant(state, pin) } }
-            _ambilightStatus.value = result.fold({ "Associé" }, { "Échec : ${it.message}" })
-            pairing = null
         }
     }
 
@@ -165,18 +133,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refresh()
         return true
     }
-
-    fun forgetAmbilight() {
-        stopAmbilightEffect()
-        tv.forget()
-        _ambilightStatus.value = "Non associé"
-    }
-
-    /** Applies the chosen screensaver Ambilight (or [choice]) until stopped or [maxMs]. */
-    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, choice: SaverAmbilight? = null) =
-        AmbilightController.start(getApplication(), choice, maxMs)
-
-    fun stopAmbilightEffect() = AmbilightController.stop()
 
     private val _weather = MutableStateFlow<Weather?>(null)
 
@@ -334,6 +290,5 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private companion object {
         const val WEATHER_REFRESH_MS = 30 * 60_000L
         const val WEATHER_RETRY_MS = 5 * 60_000L
-        const val AMBILIGHT_MAX_MS = 3 * 60 * 60_000L
     }
 }
