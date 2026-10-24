@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,6 +68,7 @@ import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val COLUMNS = 5
@@ -85,6 +88,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
     val border by viewModel.border.collectAsStateWithLifecycle()
     val keyHold = remember { HoldTimer() }
+    val titleScroll = remember { HoldTimer() }
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
@@ -125,6 +129,19 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         initialFocusPlaced = true
         val target = gridKeys[index.coerceIn(0, gridKeys.lastIndex)]
         requesterFor(target).requestFocusWhenReady()
+    }
+
+    // Focusing the first row brings the section title above it into view. The focus change
+    // also scrolls the tile into view, and a newer scroll cancels an older one, so wait for that
+    // one to finish first; otherwise the title stays half hidden.
+    fun revealTopTitle(reveal: Boolean) {
+        titleScroll.job?.cancel()
+        if (!reveal) return
+        titleScroll.job = scope.launch {
+            withFrameNanos { }
+            snapshotFlow { gridState.isScrollInProgress }.first { !it }
+            if (gridState.canScrollBackward) gridState.animateScrollToItem(0)
+        }
     }
 
     // Held digit keys: 1 opens the Kick channel, 3 the YouTube playlist, and 2 (easter egg)
@@ -200,10 +217,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                                 onFocused = {
                                     lastFocusedKey = key
                                     lastFocusedIndex = watchKeys.indexOf(key)
-                                    // The first row brings its section title into view too.
-                                    if (index < COLUMNS && gridState.canScrollBackward) {
-                                        scope.launch { gridState.animateScrollToItem(0) }
-                                    }
+                                    revealTopTitle(index < COLUMNS)
                                 },
                                 onClick = {
                                     if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
@@ -235,6 +249,8 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                             onFocused = {
                                 lastFocusedKey = app.packageName
                                 lastFocusedIndex = watchKeys.size + index
+                                // With nothing pinned, the apps are the first row.
+                                revealTopTitle(pinnedApps.isEmpty() && index < COLUMNS)
                             },
                             onClick = {
                                 if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
@@ -256,6 +272,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                                 dimmed = state.movingKey != null,
                                 focusRequester = requesterFor(MORE_APPS_KEY),
                                 onFocused = {
+                                    revealTopTitle(false)
                                     lastFocusedKey = MORE_APPS_KEY
                                     lastFocusedIndex = watchKeys.size + state.apps.size
                                 },
