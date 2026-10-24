@@ -87,6 +87,12 @@ object AppActions {
         return runCatching { context.startActivity(intent) }.isSuccess
     }
 
+    /** The TV's screensaver settings (its delay and what it shows), else the main settings. */
+    fun openScreensaverSettings(context: Context) {
+        val dream = Intent(Settings.ACTION_DREAM_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (dream.resolveActivity(context.packageManager) != null) context.safeStart(dream) else openSystemSettings(context)
+    }
+
     fun openSystemSettings(context: Context) =
         context.safeStart(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 

@@ -206,15 +206,27 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var lastInput by remember { mutableLongStateOf(0L) }
     var saverShown by remember { mutableStateOf(false) }
     var swallowUntilKeyUp by remember { mutableStateOf(false) }
+    // The TV's own screensaver starts by itself, after the delay set in the TV's settings (apps
+    // can't start it on most TVs); the accessibility service then plays the chosen Ambilight.
+    // Toolkit's screensaver is shown here, after its own delay.
     fun startScreensaver() {
-        // The TV's own screensaver if chosen and available, else Toolkit's.
-        val tvSaver = appearance.screensaverMode == ScreensaverMode.Tv && AppActions.startSystemScreensaver(context)
-        if (!tvSaver) saverShown = true
-        // And the chosen Ambilight for it (nothing to do when it's left as the TV has it).
+        if (appearance.screensaverMode == ScreensaverMode.Tv) {
+            if (!AppActions.startSystemScreensaver(context)) {
+                android.widget.Toast.makeText(
+                    context,
+                    "La TV ne laisse pas une appli lancer son économiseur : il démarre seul après le délai " +
+                        "réglé dans ses Paramètres (Options › Régler l'économiseur de la TV).",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+            }
+            return
+        }
+        saverShown = true
         viewModel.startAmbilightEffect()
     }
-    LaunchedEffect(appearance.screensaverOn, appearance.screensaverDelayMs, resumed, dialogOpen, lastInput) {
+    LaunchedEffect(appearance.screensaverOn, appearance.screensaverMode, appearance.screensaverDelayMs, resumed, dialogOpen, lastInput) {
         if (!resumed) saverShown = false
+        if (appearance.screensaverMode != ScreensaverMode.Toolkit) return@LaunchedEffect
         if (!resumed || !appearance.screensaverOn || dialogOpen || saverShown) return@LaunchedEffect
         delay(appearance.screensaverDelayMs)
         startScreensaver()

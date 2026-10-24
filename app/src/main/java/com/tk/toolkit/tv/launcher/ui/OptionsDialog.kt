@@ -59,6 +59,8 @@ import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.ShortcutSettings
 import com.tk.toolkit.tv.core.ToolkitAccessibilityService
 import com.tk.toolkit.tv.launcher.data.AccentColor
+import com.tk.toolkit.tv.launcher.data.AmbilightController
+import com.tk.toolkit.tv.launcher.data.AppActions
 import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.BorderGlow
 import com.tk.toolkit.tv.launcher.data.HomeBackground
@@ -174,7 +176,12 @@ fun OptionsDialog(
                 ActionItem("Lequel", stepLabel(appearance.screensaverMode.label), {
                     onAppearance(appearance.copy(screensaverMode = next(ScreensaverMode.entries, appearance.screensaverMode)))
                 })
-                ActionItem("Démarre après", holdLabel(appearance.screensaverDelayMs).let(::minutesLabel), {
+                ActionItem(
+                    "Régler l'économiseur de la TV",
+                    "Son délai et son contenu (il démarre seul, Toolkit ne peut pas le lancer)",
+                    { AppActions.openScreensaverSettings(context) },
+                )
+                ActionItem("Délai de l'économiseur Toolkit", holdLabel(appearance.screensaverDelayMs).let(::minutesLabel), {
                     onAppearance(
                         appearance.copy(screensaverDelayMs = nextStep(Appearance.SCREENSAVER_DELAYS, appearance.screensaverDelayMs))
                     )
@@ -198,7 +205,12 @@ fun OptionsDialog(
                         appearance.copy(ambilightIntensity = next(Appearance.AMBILIGHT_INTENSITIES, appearance.ambilightIntensity))
                     )
                 })
-                ActionItem("Tester 15 secondes", "Le choix ci-dessus (l'animation Toolkit s'il est « inchangé »)", onAmbilightTest)
+                ActionItem(
+                    "Tester 15 secondes",
+                    AmbilightController.lastError?.let { "Dernière erreur : $it" }
+                        ?: "Le choix ci-dessus (l'animation Toolkit s'il est « inchangé »)",
+                    onAmbilightTest,
+                )
                 ActionItem("Oublier l'association", "À refaire si la TV a été réinitialisée", onAmbilightForget)
 
                 SectionLabel("Sauvegarde")

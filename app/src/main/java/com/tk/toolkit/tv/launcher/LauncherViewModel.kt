@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tk.toolkit.tv.launcher.data.Appearance
-import com.tk.toolkit.tv.launcher.data.AmbilightEffect
+import com.tk.toolkit.tv.launcher.data.AmbilightController
 import com.tk.toolkit.tv.launcher.data.AppRepository
 import com.tk.toolkit.tv.launcher.data.PhilipsTv
 import com.tk.toolkit.tv.launcher.data.SaverAmbilight
@@ -114,7 +114,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val tv = PhilipsTv(application, prefs)
     private var pairing: PhilipsTv.PairState? = null
-    private var ambilightJob: Job? = null
     private val _ambilightStatus = MutableStateFlow(if (tv.isPaired) "Associé" else "Non associé")
 
     /** Pairing state of the TV's Ambilight API, as shown in the options. */
@@ -173,29 +172,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _ambilightStatus.value = "Non associé"
     }
 
-    /**
-     * Applies the chosen screensaver Ambilight ([choice], by default the one in the options):
-     * Toolkit's animation or a TV style, until stopped or [maxMs]. Nothing to do for "the TV's".
-     */
-    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, choice: SaverAmbilight = _appearance.value.saverAmbilight) {
-        if (!tv.isPaired || choice == SaverAmbilight.Tv) return
-        ambilightJob?.cancel()
-        ambilightJob = viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                val style = choice.style
-                if (style == null) {
-                    AmbilightEffect.run(tv, { _border.value }, { _appearance.value.ambilightIntensity }, maxMs)
-                } else {
-                    AmbilightEffect.runStyle(tv, style, choice.setting, maxMs)
-                }
-            }.onFailure { if (it !is kotlinx.coroutines.CancellationException) _ambilightStatus.value = "Associé · erreur : ${it.message}" }
-        }
-    }
+    /** Applies the chosen screensaver Ambilight (or [choice]) until stopped or [maxMs]. */
+    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, choice: SaverAmbilight? = null) =
+        AmbilightController.start(getApplication(), choice, maxMs)
 
-    fun stopAmbilightEffect() {
-        ambilightJob?.cancel()
-        ambilightJob = null
-    }
+    fun stopAmbilightEffect() = AmbilightController.stop()
 
     private val _weather = MutableStateFlow<Weather?>(null)
 

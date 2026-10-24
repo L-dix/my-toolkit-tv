@@ -130,8 +130,9 @@ class PhilipsTv(private val context: Context, private val prefs: LauncherPrefs) 
             val connection = URL("https://$host:$PORT$uri").openConnection() as HttpsURLConnection
             connection.sslSocketFactory = trustingSocketFactory
             connection.setHostnameVerifier { _, _ -> true }
-            connection.connectTimeout = 4_000
-            connection.readTimeout = 6_000
+            // The TV can take a while, e.g. to check a pairing code (ha-philipsjs allows 20 s).
+            connection.connectTimeout = 5_000
+            connection.readTimeout = 20_000
             connection.requestMethod = method
             connection.setRequestProperty("Accept", "application/json")
             val known = challenge

@@ -1,10 +1,16 @@
 package com.tk.toolkit.tv.core
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
+import android.graphics.Rect
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.os.Bundle
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
+import com.tk.toolkit.tv.launcher.data.AmbilightController
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -48,8 +54,8 @@ class ToolkitAccessibilityService : AccessibilityService() {
         openStockHome()
     }
 
-    /** Steps of opening a Kick channel: on screen, else through Kick's search, else Following. */
-    private enum class KickStep { FindOnScreen, OpenSearch, TypeQuery, PickResult, Following }
+    /** Steps of opening a Kick channel: on Kick's home screen, else in the Following tab. */
+    private enum class KickStep { FindOnScreen, OpenFollowing, FindInFollowing }
 
     /** Kick channel being opened by [openKickChannel], until it's clicked or time runs out. */
     private class KickRequest(val packageName: String, val channel: String, val startedAt: Long) {
@@ -84,12 +90,32 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
     private val goToSleep = Runnable { sleepNow() }
 
+    /** The TV's own screensaver starting and stopping, to play the chosen Ambilight with it. */
+    private val dreamReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_DREAMING_STARTED -> AmbilightController.start(this@ToolkitAccessibilityService)
+                Intent.ACTION_DREAMING_STOPPED -> AmbilightController.stop()
+            }
+        }
+    }
+
     override fun onServiceConnected() {
         instance = this
+        ContextCompat.registerReceiver(
+            this,
+            dreamReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_DREAMING_STARTED)
+                addAction(Intent.ACTION_DREAMING_STOPPED)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        runCatching { unregisterReceiver(dreamReceiver) }
         super.onDestroy()
     }
 
@@ -139,9 +165,9 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Starts Kick with [launch] (from its home screen), then: clicks [channel] as soon as it shows
-     * up; else opens Kick's search, types the channel and clicks the result; else clicks the
-     * Following tab (channel offline). Kick's TV app takes no links, so this is the only way in.
+     * Starts Kick with [launch] (from its home screen), then taps [channel] as soon as it shows
+     * up; else taps the Following tab and the channel there; if it isn't there either, Following
+     * stays open. Kick's TV app takes no links, so this is the only way in.
      */
     fun openKickChannel(packageName: String, channel: String, launch: Intent) {
         val now = SystemClock.uptimeMillis()
@@ -164,42 +190,21 @@ class ToolkitAccessibilityService : AccessibilityService() {
         }
         if (now - request.startedAt > KICK_GIVE_UP_MS) return finishKick(root, "Abandon : rien trouvé à cliquer")
 
-        // The channel's name anywhere on screen (but not typed in the search box) wins at every step.
+        // The channel's name anywhere on screen wins at every step.
         root.findContaining(listOf(request.channel)).firstOrNull { !it.isEditable }?.let {
             if (it.click()) return finishKick(root, "Chaîne « ${request.channel} » ouverte (${request.step})")
         }
         when (request.step) {
-            KickStep.FindOnScreen -> if (sinceStep > KICK_ON_SCREEN_MS) advance(KickStep.OpenSearch)
-            KickStep.OpenSearch -> {
-                val search = root.findContaining(SEARCH_LABELS).firstOrNull()
-                when {
-                    search?.click() == true -> advance(KickStep.TypeQuery)
-                    sinceStep > KICK_STEP_MS -> advance(KickStep.Following)
-                }
-            }
-            KickStep.TypeQuery -> {
-                val field = root.findFirst { it.isEditable }
-                when {
-                    field != null -> {
-                        field.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                        field.performAction(
-                            AccessibilityNodeInfo.ACTION_SET_TEXT,
-                            Bundle().apply {
-                                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, request.channel)
-                            },
-                        )
-                        if (Build.VERSION.SDK_INT >= 30) {
-                            field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
-                        }
-                        advance(KickStep.PickResult)
-                    }
-                    sinceStep > KICK_STEP_MS -> advance(KickStep.Following)
-                }
-            }
-            KickStep.PickResult -> if (sinceStep > KICK_STEP_MS) advance(KickStep.Following)
-            KickStep.Following -> {
+            KickStep.FindOnScreen -> if (sinceStep > KICK_ON_SCREEN_MS) advance(KickStep.OpenFollowing)
+            KickStep.OpenFollowing -> {
                 val following = root.findByText(FOLLOWING_LABELS) ?: root.findContaining(FOLLOWING_LABELS).firstOrNull()
-                if (following?.click() == true) finishKick(root, "Chaîne introuvable : onglet Suivis ouvert")
+                when {
+                    following?.click() == true -> advance(KickStep.FindInFollowing)
+                    sinceStep > KICK_STEP_MS -> finishKick(root, "Onglet Suivis introuvable")
+                }
+            }
+            KickStep.FindInFollowing -> if (sinceStep > KICK_FOLLOWING_MS) {
+                finishKick(root, "« ${request.channel} » absent des Suivis : onglet Suivis laissé ouvert")
             }
         }
     }
@@ -241,16 +246,21 @@ class ToolkitAccessibilityService : AccessibilityService() {
     private fun AccessibilityNodeInfo.findContaining(labels: List<String>): List<AccessibilityNodeInfo> =
         labels.flatMap { findAccessibilityNodeInfosByText(it) }
 
-    private fun AccessibilityNodeInfo.findFirst(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
-        if (predicate(this)) return this
-        for (i in 0 until childCount) getChild(i)?.findFirst(predicate)?.let { return it }
-        return null
+    /**
+     * Clicks this node or its nearest clickable parent; apps like Kick mark nothing as clickable,
+     * so failing that, taps the middle of the node on screen (a gesture, like TV "mouse" apps).
+     */
+    private fun AccessibilityNodeInfo.click(): Boolean {
+        if (clickableAncestor()?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) return true
+        if (performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+        val bounds = Rect().also { getBoundsInScreen(it) }
+        if (bounds.isEmpty) return false
+        val point = Path().apply { moveTo(bounds.exactCenterX(), bounds.exactCenterY()) }
+        val tap = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(point, 0L, TAP_MS))
+            .build()
+        return dispatchGesture(tap, null, null)
     }
-
-    /** Clicks this node, or its nearest clickable parent (labels are often inside the button). */
-    private fun AccessibilityNodeInfo.click(): Boolean =
-        clickableAncestor()?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true ||
-            performAction(AccessibilityNodeInfo.ACTION_CLICK)
 
     /** Adds [packageName] to the apps this service gets events from (accessibility_service.xml). */
     private fun watchPackage(packageName: String) {
@@ -400,11 +410,12 @@ class ToolkitAccessibilityService : AccessibilityService() {
 
         private const val KICK_TICK_MS = 700L
         /** How long to look for the channel on Kick's home screen before trying its search. */
-        private const val KICK_ON_SCREEN_MS = 4_000L
+        private const val KICK_ON_SCREEN_MS = 3_000L
         private const val KICK_STEP_MS = 3_500L
-        private const val KICK_GIVE_UP_MS = 22_000L
+        private const val KICK_FOLLOWING_MS = 6_000L
+        private const val KICK_GIVE_UP_MS = 18_000L
         private const val KICK_REPORT_LINES = 120
-        private val SEARCH_LABELS = listOf("Rechercher", "Recherche", "Search")
+        private const val TAP_MS = 60L
         private val FOLLOWING_LABELS = listOf("Following", "Suivis", "Abonnements", "Chaînes suivies", "Suivi")
     }
 }

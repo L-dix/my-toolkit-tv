@@ -56,7 +56,7 @@ enum class WeatherDetail(val label: String) {
 
 /** What starts after the screensaver delay. */
 enum class ScreensaverMode(val label: String) {
-    Tv("Celui de la TV (Ambilight / Google TV)"),
+    Tv("Celui de la TV (démarre seul, selon ses Paramètres)"),
     Toolkit("Toolkit : horloge, météo, bouteilles"),
 }
 
