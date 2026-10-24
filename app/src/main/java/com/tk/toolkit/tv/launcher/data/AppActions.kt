@@ -3,13 +3,10 @@ package com.tk.toolkit.tv.launcher.data
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.net.toUri
 import com.tk.toolkit.tv.core.ToolkitAccessibilityService
-import kotlin.concurrent.thread
 
 /** System-level actions the launcher can perform on an app. */
 object AppActions {
@@ -53,43 +50,13 @@ object AppActions {
         }
     }
 
-    /**
-     * Kick's TV app opens no channel from outside, so: if [channel] is live and VLC is installed,
-     * plays the live stream in VLC; otherwise opens Kick where it was left.
-     */
-    fun openKickChannel(context: Context, packageName: String?, channel: String) {
+    /** Kick's TV app opens no channel from outside, so this opens Kick where it was left. */
+    fun openKick(context: Context, packageName: String?) {
         val pm = context.packageManager
         val kick = packageName
             ?.let { pm.getLeanbackLaunchIntentForPackage(it) ?: pm.getLaunchIntentForPackage(it) }
             ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        fun openKick(why: String?) {
-            when {
-                kick == null -> Toast.makeText(context, why ?: "Kick n'est pas installé", Toast.LENGTH_LONG).show()
-                else -> {
-                    if (why != null) Toast.makeText(context, "$why : ouverture de Kick", Toast.LENGTH_LONG).show()
-                    context.safeStart(kick)
-                }
-            }
-        }
-        if (runCatching { pm.getPackageInfo(VLC, 0) }.isFailure) return openKick(null)
-
-        Toast.makeText(context, "Recherche du live de $channel…", Toast.LENGTH_SHORT).show()
-        thread {
-            val live = KickLive.check(channel)
-            Handler(Looper.getMainLooper()).post {
-                when (live) {
-                    is KickLive.Live -> context.safeStart(
-                        Intent(Intent.ACTION_VIEW)
-                            .setDataAndType(live.streamUrl.toUri(), "application/x-mpegURL")
-                            .setPackage(VLC)
-                            .putExtra("title", "$channel · Kick")
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                    KickLive.Offline -> openKick("$channel n'est pas en live")
-                    is KickLive.Unreachable -> openKick("Kick ne répond pas (${live.reason})")
-                }
-            }
-        }
+        if (kick != null) context.safeStart(kick) else Toast.makeText(context, "Kick n'est pas installé", Toast.LENGTH_SHORT).show()
     }
 
     fun openSystemSettings(context: Context) =
@@ -137,6 +104,4 @@ object AppActions {
             Toast.makeText(this, "Action non autorisée", Toast.LENGTH_SHORT).show()
         }
     }
-
-    private const val VLC = "org.videolan.vlc"
 }

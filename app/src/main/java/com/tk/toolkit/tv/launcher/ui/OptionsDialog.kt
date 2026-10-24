@@ -72,7 +72,7 @@ import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist, Font, Backup, Restore }
+private enum class Field { Playlist, Font, Backup, Restore }
 
 /**
  * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
@@ -165,7 +165,6 @@ fun OptionsDialog(
                 SleepTimerItem()
 
                 SectionLabel("Raccourcis")
-                ActionItem("Chaîne Kick · touche 1", "kick.com/${settings.kickChannel}", { editing = Field.Kick })
                 ActionItem(
                     "Playlist YouTube · touche 3",
                     "youtube.com/playlist?list=${settings.youtubePlaylist}",
@@ -213,14 +212,6 @@ fun OptionsDialog(
     }
 
     when (editing) {
-        Field.Kick -> TextInputDialog(
-            title = "Chaîne Kick",
-            hint = "Colle le lien de la chaîne (kick.com/…) ou son nom",
-            initial = "https://kick.com/${settings.kickChannel}",
-            parse = Shortcuts::parseKickChannel,
-            onDismiss = { editing = null },
-            onSave = { onShortcuts(settings.copy(kickChannel = it)); editing = null },
-        )
         Field.Playlist -> TextInputDialog(
             title = "Playlist YouTube",
             hint = "Colle le lien de la playlist (youtube.com/playlist?list=…)",

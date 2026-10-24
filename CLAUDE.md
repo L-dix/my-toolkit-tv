@@ -18,7 +18,7 @@ Fork de teja2495/my-toolkit-tv, personnalisé pour une seule TV. Lire ce fichier
 - Le service d'accessibilité (`core/ToolkitAccessibilityService.kt`) fait de Toolkit l'accueil : interception de Home, appui long = réglages rapides, très long = accueil Google TV. Il gère aussi « Forcer l'arrêt » automatique et la minuterie de veille.
 - Réglages dans `LauncherPrefs` (SharedPreferences « launcher »), menu Options (`ui/OptionsDialog.kt`), sauvegarde des réglages en code texte / QR (`TK1:`).
 - Raccourcis (maintien sur l'accueil) :
-  - **1** = chaîne Kick (ryu7z) ;
+  - **1** = ouvre Kick là où on l'a laissé ;
   - **2** = bordure arc-en-ciel ;
   - **3** = playlist YouTube.
   - Valeurs par défaut dans `data/Shortcuts.kt`.
@@ -26,8 +26,9 @@ Fork de teja2495/my-toolkit-tv, personnalisé pour une seule TV. Lire ce fichier
 ## Déjà essayé, ne pas refaire
 - **Kick** (`com.kick.mobile`) :
   - aucun lien ne l'ouvre sur une chaîne (`kick.com/<nom>`, `/videos`, `kick://…`) ;
-  - ses éléments ne sont pas cliquables par l'accessibilité, et les clics simulés (gestes) étaient trop aléatoires : supprimés.
-  - Solution actuelle (`data/KickLive.kt`) : si la chaîne est en live et que VLC est installé, lecture du flux dans VLC (API non documentée `kick.com/api/v2/channels/<nom>` → `playback_url`) ; sinon Kick s'ouvre là où on l'a laissé (sans `FLAG_ACTIVITY_CLEAR_TASK`), avec un toast qui dit pourquoi.
+  - ses éléments ne sont pas cliquables par l'accessibilité, et les clics simulés (gestes) étaient trop aléatoires ;
+  - la lecture du live dans VLC (API non documentée `kick.com/api/v2/channels/<nom>`) n'a pas marché sur la TV.
+  - Choix de l'utilisateur : la touche 1 ouvre simplement Kick là où on l'a laissé (sans `FLAG_ACTIVITY_CLEAR_TASK`). Ne plus y toucher.
 - **Économiseur d'écran / anti-burn / Ambilight** :
   - la TV ne laisse pas une appli lancer son économiseur ;
   - le jumelage avec l'API JointSpace de Philips (Ambilight) échoue par délai dépassé.

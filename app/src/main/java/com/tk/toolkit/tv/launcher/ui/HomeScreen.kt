@@ -166,7 +166,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         val shortcuts = viewModel.shortcuts.value
         val (holdMs, action) = when (event.nativeKeyEvent.keyCode) {
             android.view.KeyEvent.KEYCODE_1, android.view.KeyEvent.KEYCODE_NUMPAD_1 -> shortcuts.kickHoldMs to {
-                AppActions.openKickChannel(context, viewModel.packageOf(HomeDefaults.KICK), viewModel.shortcuts.value.kickChannel)
+                AppActions.openKick(context, viewModel.packageOf(HomeDefaults.KICK))
             }
             android.view.KeyEvent.KEYCODE_3, android.view.KeyEvent.KEYCODE_NUMPAD_3 -> shortcuts.playlistHoldMs to {
                 val playlist = viewModel.shortcuts.value.youtubePlaylist
