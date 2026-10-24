@@ -19,9 +19,10 @@ class AppRepository(private val context: Context) {
 
     // Bitmaps are rasterized at roughly their on-screen pixel size, which depends on the
     // resolution the TV renders its UI at (1080p on most Google TVs, 2160p on some 4K sets).
-    // A focused tile is about a fifth of the screen width; its icon about a fifteenth.
+    // A focused tile is about a fifth of the screen width with 5 apps per row; sized for 4, so
+    // tiles stay sharp down to 4 per row. Its icon is about a fifteenth.
     private val screenPx = context.resources.displayMetrics.let { maxOf(it.widthPixels, it.heightPixels) }
-    private val bannerW = (screenPx / 5).coerceAtLeast(MIN_BANNER_W)
+    private val bannerW = (screenPx / 4).coerceAtLeast(MIN_BANNER_W)
     private val bannerH = bannerW * 9 / 16
     private val iconPx = (screenPx / 15).coerceAtLeast(MIN_ICON_PX)
 

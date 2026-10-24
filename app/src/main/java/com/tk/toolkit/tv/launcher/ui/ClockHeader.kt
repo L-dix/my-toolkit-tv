@@ -36,6 +36,7 @@ import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.data.Weather
+import com.tk.toolkit.tv.launcher.data.WeatherDetail
 import com.tk.toolkit.tv.ui.theme.ClockFont
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.delay
@@ -43,25 +44,20 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class ClockText(val time: String, val meridiem: String?, val weekday: String, val date: String)
+internal data class ClockText(val time: String, val meridiem: String?, val weekday: String, val date: String)
 
 @Composable
 fun ClockHeader(
     font: ClockFont,
     weather: Weather?,
+    weatherDetail: WeatherDetail,
     onOpenOptions: () -> Unit,
     onSortApps: () -> Unit,
     onOpenAudioOutput: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val clock by produceState(clockText(DateFormat.is24HourFormat(context))) {
-        while (true) {
-            value = clockText(DateFormat.is24HourFormat(context))
-            delay(1_000L - System.currentTimeMillis() % 1_000L)
-        }
-    }
+    val clock = rememberClock()
 
     val timeStyle = MaterialTheme.typography.displaySmall.copy(
         fontFamily = font.family,
@@ -117,7 +113,7 @@ fun ClockHeader(
                 color = ToolkitColors.OnSurfaceMuted,
             )
         }
-        weather?.let { WeatherBlock(it, font) }
+        weather?.let { WeatherBlock(it, weatherDetail, font) }
         Spacer(Modifier.weight(1f))
         HeaderButton(Icons.Outlined.Tune, "Options de Toolkit", onOpenOptions)
         Spacer(Modifier.width(12.dp))
@@ -131,7 +127,16 @@ fun ClockHeader(
 
 /** "☁️ 12°" over "Paris · Couvert", set apart from the date by the same divider. */
 @Composable
-private fun WeatherBlock(weather: Weather, font: ClockFont) {
+private fun WeatherBlock(weather: Weather, detail: WeatherDetail, font: ClockFont) {
+    val top = when (detail) {
+        WeatherDetail.Simple -> "${weather.emoji} ${weather.temperature}°"
+        else -> "${weather.emoji} ${weather.temperature}°  ·  ${weather.min}° / ${weather.max}°"
+    }
+    val bottom = when (detail) {
+        WeatherDetail.Simple -> listOf(weather.city, weather.description)
+        WeatherDetail.Detailed -> listOf(weather.city, weather.description, "ressenti ${weather.feelsLike}°")
+        WeatherDetail.Full -> listOf(weather.city, weather.description, "💧 ${weather.rainChance} %", "💨 ${weather.wind} km/h")
+    }.filter { it.isNotEmpty() }.joinToString(" · ")
     Spacer(
         Modifier
             .padding(horizontal = 16.dp)
@@ -140,7 +145,7 @@ private fun WeatherBlock(weather: Weather, font: ClockFont) {
     )
     Column {
         Text(
-            "${weather.emoji} ${weather.temperature}°",
+            top,
             style = MaterialTheme.typography.labelLarge.copy(
                 fontFamily = font.family,
                 fontWeight = FontWeight.Bold,
@@ -150,7 +155,7 @@ private fun WeatherBlock(weather: Weather, font: ClockFont) {
             color = ToolkitColors.OnSurface,
         )
         Text(
-            listOf(weather.city, weather.description).filter { it.isNotEmpty() }.joinToString(" · "),
+            bottom,
             style = MaterialTheme.typography.bodyLarge.copy(fontFamily = font.family, fontWeight = font.dateWeight, fontSize = 14.sp, letterSpacing = 0.sp),
             color = ToolkitColors.OnSurfaceMuted,
         )
@@ -178,6 +183,19 @@ private fun HeaderButton(description: String, onClick: () -> Unit, content: @Com
     ) {
         content()
     }
+}
+
+/** The current time and date, updated on each second. */
+@Composable
+internal fun rememberClock(): ClockText {
+    val context = LocalContext.current
+    val clock by produceState(clockText(DateFormat.is24HourFormat(context))) {
+        while (true) {
+            value = clockText(DateFormat.is24HourFormat(context))
+            delay(1_000L - System.currentTimeMillis() % 1_000L)
+        }
+    }
+    return clock
 }
 
 private fun clockText(is24Hour: Boolean): ClockText {

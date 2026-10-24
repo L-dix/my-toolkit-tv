@@ -34,6 +34,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +57,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -64,6 +70,7 @@ import com.tk.toolkit.tv.launcher.data.AppActions.safeStart
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
+import com.tk.toolkit.tv.launcher.data.NightMode
 import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
 import kotlinx.coroutines.Job
@@ -71,10 +78,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-private const val COLUMNS = 5
 private const val MORE_APPS_KEY = "toolkit:more-apps"
 private const val WATCH_TITLE_KEY = "toolkit:continue-watching-title"
 private const val APPS_TITLE_KEY = "toolkit:apps-title"
+private const val RECENT_TITLE_KEY = "toolkit:recent-title"
+private fun recentKey(packageName: String) = "recent:$packageName"
 
 /** The pending "held long enough" timer of a held digit key. */
 private class HoldTimer(var job: Job? = null)
@@ -87,6 +95,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val clockFont by viewModel.clockFont.collectAsStateWithLifecycle()
     val border by viewModel.border.collectAsStateWithLifecycle()
+    val appearance by viewModel.appearance.collectAsStateWithLifecycle()
+    val columns = appearance.columns
+    SideEffect { ToolkitColors.Accent = appearance.accent.color }
     val keyHold = remember { HoldTimer() }
     val titleScroll = remember { HoldTimer() }
     val context = LocalContext.current
@@ -108,8 +119,17 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     val scrollSpec = with(LocalDensity.current) { remember { minimalScrollSpec(28.dp.toPx()) } }
     val pinnedApps = state.pinnedApps
     val watchKeys = pinnedApps.map { ContinueWatching.key(it.packageName) }
-    val gridKeys = watchKeys + state.apps.map { it.packageName } +
+    // One row of the apps last launched from Toolkit, leaving out those already pinned.
+    val recentApps = if (!appearance.showRecent) emptyList() else
+        state.recentApps.filter { app -> pinnedApps.none { it.packageName == app.packageName } }.take(columns)
+    val recentKeys = recentApps.map { recentKey(it.packageName) }
+    val gridKeys = watchKeys + recentKeys + state.apps.map { it.packageName } +
         if (state.hiddenApps.isNotEmpty()) listOf(MORE_APPS_KEY) else emptyList()
+    fun launchApp(app: LauncherApp) {
+        if (state.movingKey != null) return
+        viewModel.launched(app)
+        context.safeStart(viewModel.launchIntent(app))
+    }
 
     // This is the home screen: Back never leaves it, it only cancels a move.
     BackHandler { if (state.movingKey != null) viewModel.endMove() }
@@ -124,7 +144,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             if (lastFocusedKey in gridKeys) return@LaunchedEffect
             lastFocusedIndex
         } else {
-            watchKeys.size
+            watchKeys.size + recentKeys.size
         }
         initialFocusPlaced = true
         val target = gridKeys[index.coerceIn(0, gridKeys.lastIndex)]
@@ -174,11 +194,52 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         true
     }
 
-    Box(Modifier.fillMaxSize().then(heldDigits)) {
+    // Screensaver: shown after the chosen delay without any key, while Toolkit is on screen and
+    // no menu is open. The key that dismisses it does nothing else.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val resumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val dialogOpen = showOptions || showSort || showHidden || menuApp != null || menuPinnedApp != null
+    var lastInput by remember { mutableLongStateOf(0L) }
+    var saverShown by remember { mutableStateOf(false) }
+    var swallowUntilKeyUp by remember { mutableStateOf(false) }
+    LaunchedEffect(appearance.screensaverOn, appearance.screensaverDelayMs, resumed, dialogOpen, lastInput) {
+        if (!resumed) saverShown = false
+        if (!resumed || !appearance.screensaverOn || dialogOpen || saverShown) return@LaunchedEffect
+        delay(appearance.screensaverDelayMs)
+        saverShown = true
+    }
+    val saverInput = Modifier.onPreviewKeyEvent { event ->
+        lastInput = event.nativeKeyEvent.eventTime
+        when {
+            saverShown -> {
+                saverShown = false
+                swallowUntilKeyUp = event.type == KeyEventType.KeyDown
+                true
+            }
+            swallowUntilKeyUp -> {
+                if (event.type == KeyEventType.KeyUp) swallowUntilKeyUp = false
+                true
+            }
+            else -> false
+        }
+    }
+
+    // Night mode dims everything, always or from 21:00 to 7:00 (checked every minute).
+    val evening by produceState(isEvening()) {
+        while (true) {
+            value = isEvening()
+            delay(60_000L)
+        }
+    }
+    val dimmed = appearance.nightMode == NightMode.Always || (appearance.nightMode == NightMode.Evening && evening)
+
+    Box(Modifier.fillMaxSize().then(saverInput).then(heldDigits)) {
+        HomeBackdrop(appearance.background, appearance.accent.color)
         Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
             ClockHeader(
                 font = clockFont,
                 weather = weather,
+                weatherDetail = appearance.weatherDetail,
                 onOpenOptions = { if (state.movingKey == null) showOptions = true },
                 onSortApps = { if (state.movingKey == null) showSort = true },
                 onOpenAudioOutput = { AppActions.openAudioOutput(context) },
@@ -188,7 +249,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
 
             CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(COLUMNS),
+                    columns = GridCells.Fixed(columns),
                     state = gridState,
                     // Generous padding so the enlarged focused/moving tile is never clipped at the edges.
                     contentPadding = PaddingValues(horizontal = 56.dp, vertical = 28.dp),
@@ -209,18 +270,16 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                             AppTile(
                                 app = app,
                                 index = index,
-                                columns = COLUMNS,
+                                columns = columns,
                                 isMoving = isMoving,
                                 dimmed = state.movingKey != null && !isMoving,
                                 focusRequester = requesterFor(key),
                                 onFocused = {
                                     lastFocusedKey = key
                                     lastFocusedIndex = watchKeys.indexOf(key)
-                                    revealTopTitle(index < COLUMNS)
+                                    revealTopTitle(index < columns)
                                 },
-                                onClick = {
-                                    if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
-                                },
+                                onClick = { launchApp(app) },
                                 onLongClick = { if (state.movingKey == null) menuPinnedApp = app },
                                 onMoveBy = viewModel::moveBy,
                                 onDrop = viewModel::endMove,
@@ -229,6 +288,32 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                                     fadeOutSpec = null,
                                     placementSpec = if (state.movingKey != null) spring(stiffness = Spring.StiffnessMediumLow) else null,
                                 ),
+                            )
+                        }
+                    }
+                    if (recentApps.isNotEmpty()) {
+                        item(key = RECENT_TITLE_KEY, span = { GridItemSpan(maxLineSpan) }) {
+                            SectionTitle("Récemment utilisées", accentBar = false)
+                        }
+                        itemsIndexed(recentApps, key = { _, app -> recentKey(app.packageName) }) { index, app ->
+                            val key = recentKey(app.packageName)
+                            AppTile(
+                                app = app,
+                                index = index,
+                                columns = columns,
+                                isMoving = false,
+                                dimmed = state.movingKey != null,
+                                focusRequester = requesterFor(key),
+                                onFocused = {
+                                    lastFocusedKey = key
+                                    lastFocusedIndex = watchKeys.size + index
+                                    revealTopTitle(pinnedApps.isEmpty())
+                                },
+                                onClick = { launchApp(app) },
+                                onLongClick = { if (state.movingKey == null) menuApp = app },
+                                onMoveBy = {},
+                                onDrop = {},
+                                modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = null),
                             )
                         }
                     }
@@ -241,19 +326,17 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                         AppTile(
                             app = app,
                             index = index,
-                            columns = COLUMNS,
+                            columns = columns,
                             isMoving = isMoving,
                             dimmed = state.movingKey != null && !isMoving,
                             focusRequester = requesterFor(app.packageName),
                             onFocused = {
                                 lastFocusedKey = app.packageName
-                                lastFocusedIndex = watchKeys.size + index
-                                // With nothing pinned, the apps are the first row.
-                                revealTopTitle(pinnedApps.isEmpty() && index < COLUMNS)
+                                lastFocusedIndex = watchKeys.size + recentKeys.size + index
+                                // With nothing pinned or recent, the apps are the first row.
+                                revealTopTitle(pinnedApps.isEmpty() && recentApps.isEmpty() && index < columns)
                             },
-                            onClick = {
-                                if (state.movingKey == null) context.safeStart(viewModel.launchIntent(app))
-                            },
+                            onClick = { launchApp(app) },
                             onLongClick = { if (state.movingKey == null) menuApp = app },
                             onMoveBy = viewModel::moveBy,
                             onDrop = viewModel::endMove,
@@ -273,7 +356,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
                                 onFocused = {
                                     revealTopTitle(false)
                                     lastFocusedKey = MORE_APPS_KEY
-                                    lastFocusedIndex = watchKeys.size + state.apps.size
+                                    lastFocusedIndex = watchKeys.size + recentKeys.size + state.apps.size
                                 },
                                 onClick = { if (state.movingKey == null) showHidden = true },
                             )
@@ -295,6 +378,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
         ) {
             MoveHint()
         }
+
+        if (dimmed) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+        if (saverShown) Screensaver(clockFont, weather, appearance.screensaverBottles)
     }
 
     if (showHidden && state.hiddenApps.isNotEmpty()) {
@@ -303,7 +389,7 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             onDismiss = { showHidden = false },
             onLaunch = { app ->
                 showHidden = false
-                context.safeStart(viewModel.launchIntent(app))
+                launchApp(app)
             },
             onLongPress = { menuApp = it },
         )
@@ -316,7 +402,9 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             clockFont = clockFont,
             rainbowOn = rainbow,
             border = border,
+            appearance = appearance,
             onDismiss = { showOptions = false },
+            onAppearance = viewModel::setAppearance,
             onClockFont = viewModel::setClockFont,
             onShortcuts = viewModel::setShortcuts,
             onToggleRainbow = viewModel::toggleRainbow,
@@ -395,4 +483,9 @@ private fun MoveHint() {
             .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
             .padding(horizontal = 22.dp, vertical = 12.dp),
     )
+}
+
+private fun isEvening(): Boolean {
+    val hour = java.time.LocalTime.now().hour
+    return hour >= 21 || hour < 7
 }

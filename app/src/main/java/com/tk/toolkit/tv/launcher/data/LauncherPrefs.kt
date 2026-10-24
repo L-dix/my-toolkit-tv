@@ -67,6 +67,45 @@ class LauncherPrefs(context: Context) {
         get() = prefs.getString(KEY_CLOCK_FONT, null)
         set(value) = prefs.edit { putString(KEY_CLOCK_FONT, value) }
 
+    /** Home screen look, weather and screensaver; each part falls back to its default. */
+    var appearance: Appearance
+        get() {
+            val default = Appearance()
+            return Appearance(
+                columns = prefs.getInt(KEY_COLUMNS, default.columns),
+                accent = prefs.getString(KEY_ACCENT, null).toEnum(default.accent),
+                background = prefs.getString(KEY_BACKGROUND, null).toEnum(default.background),
+                nightMode = prefs.getString(KEY_NIGHT_MODE, null).toEnum(default.nightMode),
+                showRecent = prefs.getBoolean(KEY_SHOW_RECENT, default.showRecent),
+                weatherCity = prefs.getString(KEY_WEATHER_CITY, null).toEnum(default.weatherCity),
+                weatherDetail = prefs.getString(KEY_WEATHER_DETAIL, null).toEnum(default.weatherDetail),
+                screensaverOn = prefs.getBoolean(KEY_SAVER_ON, default.screensaverOn),
+                screensaverDelayMs = prefs.getLong(KEY_SAVER_DELAY, default.screensaverDelayMs),
+                screensaverBottles = prefs.getBoolean(KEY_SAVER_BOTTLES, default.screensaverBottles),
+            )
+        }
+        set(value) = prefs.edit {
+            putInt(KEY_COLUMNS, value.columns)
+            putString(KEY_ACCENT, value.accent.name)
+            putString(KEY_BACKGROUND, value.background.name)
+            putString(KEY_NIGHT_MODE, value.nightMode.name)
+            putBoolean(KEY_SHOW_RECENT, value.showRecent)
+            putString(KEY_WEATHER_CITY, value.weatherCity.name)
+            putString(KEY_WEATHER_DETAIL, value.weatherDetail.name)
+            putBoolean(KEY_SAVER_ON, value.screensaverOn)
+            putLong(KEY_SAVER_DELAY, value.screensaverDelayMs)
+            putBoolean(KEY_SAVER_BOTTLES, value.screensaverBottles)
+        }
+
+    /** Apps launched from Toolkit, most recent first. */
+    fun recentPackages(): List<String> =
+        prefs.getString(KEY_RECENT, null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+
+    fun recordLaunch(packageName: String) {
+        val updated = (listOf(packageName) + (recentPackages() - packageName)).take(MAX_RECENT)
+        prefs.edit { putString(KEY_RECENT, updated.joinToString("\n")) }
+    }
+
     /** Look of the hold-2 border; each part falls back to its default. */
     var borderSettings: BorderSettings
         get() {
@@ -123,6 +162,18 @@ class LauncherPrefs(context: Context) {
         const val KEY_PLAYLIST_HOLD = "playlist_hold_ms"
         const val KEY_HOME_QUICK = "home_quick_settings_ms"
         const val KEY_HOME_STOCK = "home_stock_home_ms"
+        const val KEY_COLUMNS = "columns"
+        const val KEY_ACCENT = "accent"
+        const val KEY_BACKGROUND = "background"
+        const val KEY_NIGHT_MODE = "night_mode"
+        const val KEY_SHOW_RECENT = "show_recent"
+        const val KEY_WEATHER_CITY = "weather_city"
+        const val KEY_WEATHER_DETAIL = "weather_detail"
+        const val KEY_SAVER_ON = "screensaver_on"
+        const val KEY_SAVER_DELAY = "screensaver_delay_ms"
+        const val KEY_SAVER_BOTTLES = "screensaver_bottles"
+        const val KEY_RECENT = "recent"
+        const val MAX_RECENT = 10
         const val KEY_BORDER_STYLE = "border_style"
         const val KEY_BORDER_PALETTE = "border_palette"
         const val KEY_BORDER_THICKNESS = "border_thickness"

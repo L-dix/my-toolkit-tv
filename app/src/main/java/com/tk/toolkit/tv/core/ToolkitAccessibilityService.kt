@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -21,6 +22,7 @@ import com.tk.toolkit.tv.launcher.data.LauncherPrefs
  *   holding it longer opens the stock home until Home is pressed again (both durations are
  *   set in Toolkit's options).
  * - Drives the system App info screen to press "Force stop" → "OK" after [forceStop].
+ * - Puts the TV to sleep when the sleep timer set with [setSleepTimer] runs out.
  * - Opens a Kick channel after [openKickChannel]: Kick's TV app takes no links, so once it's
  *   open this clicks the channel's name, or the Following tab if the channel can't be found.
  */
@@ -51,6 +53,17 @@ class ToolkitAccessibilityService : AccessibilityService() {
     private val kickFallback = Runnable { rootInActiveWindow?.let(::continueKick) }
     private val kickGiveUp = Runnable { kick = null }
 
+    /** Sleep timer: chosen length in minutes and when it ends (wall clock), or null when off. */
+    var sleepMinutes: Int? = null
+        private set
+    var sleepAt: Long? = null
+        private set
+    private var sleepDialogOpen = false
+    private val sleepWarning = Runnable {
+        Toast.makeText(this, "La TV se met en veille dans 1 minute", Toast.LENGTH_LONG).show()
+    }
+    private val goToSleep = Runnable { sleepNow() }
+
     override fun onServiceConnected() {
         instance = this
     }
@@ -71,6 +84,38 @@ class ToolkitAccessibilityService : AccessibilityService() {
             AppActions.appInfoIntent(packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         )
+    }
+
+    /** Starts, changes or (with null) cancels the sleep timer. */
+    fun setSleepTimer(minutes: Int?) {
+        handler.removeCallbacks(goToSleep)
+        handler.removeCallbacks(sleepWarning)
+        sleepMinutes = minutes
+        if (minutes == null) {
+            sleepAt = null
+            return
+        }
+        val delayMs = minutes * 60_000L
+        sleepAt = System.currentTimeMillis() + delayMs
+        handler.postDelayed(goToSleep, delayMs)
+        if (delayMs > 60_000L) handler.postDelayed(sleepWarning, delayMs - 60_000L)
+    }
+
+    /**
+     * Apps can't press the power button, so: the lock-screen action, which sleeps most TVs; if
+     * the screen is still on a few seconds later, the power menu, then its sleep entry.
+     */
+    private fun sleepNow() {
+        sleepMinutes = null
+        sleepAt = null
+        performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+        handler.postDelayed({
+            if (getSystemService(PowerManager::class.java)?.isInteractive != true) return@postDelayed
+            sleepDialogOpen = true
+            SYSTEM_DIALOG_PACKAGES.forEach(::watchPackage)
+            performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+            handler.postDelayed({ sleepDialogOpen = false }, SLEEP_DIALOG_WAIT_MS)
+        }, LOCK_CHECK_MS)
     }
 
     /**
@@ -130,6 +175,13 @@ class ToolkitAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (sleepDialogOpen) {
+            val node = rootInActiveWindow?.findByText(SLEEP_LABELS)
+            if (node?.clickableAncestor()?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) {
+                sleepDialogOpen = false
+            }
+            return
+        }
         // Catches the stock home showing up some other way (boot, an app exiting to home).
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             event.packageName == STOCK_LAUNCHER &&
@@ -233,6 +285,12 @@ class ToolkitAccessibilityService : AccessibilityService() {
         // English and French system Settings (straight and typographic apostrophes).
         private val FORCE_STOP_LABELS = listOf("Force stop", "Forcer l'arrêt", "Forcer l’arrêt")
         private val CONFIRM_LABELS = listOf("OK")
+
+        private const val LOCK_CHECK_MS = 3_000L
+        private const val SLEEP_DIALOG_WAIT_MS = 10_000L
+        private val SYSTEM_DIALOG_PACKAGES = listOf("android", "com.android.systemui")
+        /** Power menu entries that put the TV in standby, most specific first. */
+        private val SLEEP_LABELS = listOf("Mise en veille", "Veille", "Sleep", "Standby", "Éteindre", "Power off")
 
         /** How long to look for the channel's name before falling back to Following. */
         private const val KICK_CHANNEL_SEARCH_MS = 5_000L

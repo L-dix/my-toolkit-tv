@@ -44,7 +44,14 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.tk.toolkit.tv.launcher.ShortcutSettings
+import com.tk.toolkit.tv.core.ToolkitAccessibilityService
+import com.tk.toolkit.tv.launcher.data.AccentColor
+import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.BorderGlow
+import com.tk.toolkit.tv.launcher.data.HomeBackground
+import com.tk.toolkit.tv.launcher.data.NightMode
+import com.tk.toolkit.tv.launcher.data.WeatherCity
+import com.tk.toolkit.tv.launcher.data.WeatherDetail
 import com.tk.toolkit.tv.launcher.data.BorderPalette
 import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.BorderSpeed
@@ -68,7 +75,9 @@ fun OptionsDialog(
     clockFont: ClockFont,
     rainbowOn: Boolean,
     border: BorderSettings,
+    appearance: Appearance,
     onDismiss: () -> Unit,
+    onAppearance: (Appearance) -> Unit,
     onClockFont: (ClockFont) -> Unit,
     onShortcuts: (ShortcutSettings) -> Unit,
     onToggleRainbow: () -> Unit,
@@ -106,6 +115,52 @@ fun OptionsDialog(
                     { editing = Field.Font },
                     Modifier.focusRequester(firstAction),
                 )
+                ActionItem("Applis par ligne", stepLabel("${appearance.columns}"), {
+                    onAppearance(appearance.copy(columns = next(Appearance.COLUMN_CHOICES, appearance.columns)))
+                })
+                ActionItem("Couleur d'accent", stepLabel(appearance.accent.label), {
+                    onAppearance(appearance.copy(accent = next(AccentColor.entries, appearance.accent)))
+                })
+                ActionItem("Fond", stepLabel(appearance.background.label), {
+                    onAppearance(appearance.copy(background = next(HomeBackground.entries, appearance.background)))
+                })
+                ActionItem("Mode nuit (assombrit l'accueil)", stepLabel(appearance.nightMode.label), {
+                    onAppearance(appearance.copy(nightMode = next(NightMode.entries, appearance.nightMode)))
+                })
+                ActionItem(
+                    "Rangée « Récemment utilisées »",
+                    stepLabel(if (appearance.showRecent) "Affichée" else "Masquée"),
+                    { onAppearance(appearance.copy(showRecent = !appearance.showRecent)) },
+                )
+
+                SectionLabel("Météo")
+                ActionItem("Ville", stepLabel(appearance.weatherCity.label), {
+                    onAppearance(appearance.copy(weatherCity = next(WeatherCity.entries, appearance.weatherCity)))
+                })
+                ActionItem("Informations", stepLabel(appearance.weatherDetail.label), {
+                    onAppearance(appearance.copy(weatherDetail = next(WeatherDetail.entries, appearance.weatherDetail)))
+                })
+                ActionItem("Revenir à la météo d'origine", "Paris, affichage simple", {
+                    onAppearance(appearance.copy(weatherCity = WeatherCity.Paris, weatherDetail = WeatherDetail.Simple))
+                })
+
+                SectionLabel("Économiseur d'écran")
+                ActionItem("Économiseur Toolkit", stepLabel(if (appearance.screensaverOn) "Activé" else "Désactivé"), {
+                    onAppearance(appearance.copy(screensaverOn = !appearance.screensaverOn))
+                })
+                ActionItem("Démarre après", holdLabel(appearance.screensaverDelayMs).let(::minutesLabel), {
+                    onAppearance(
+                        appearance.copy(screensaverDelayMs = nextStep(Appearance.SCREENSAVER_DELAYS, appearance.screensaverDelayMs))
+                    )
+                })
+                ActionItem(
+                    "Bouteilles de Château Margaux",
+                    stepLabel(if (appearance.screensaverBottles) "Affichées" else "Masquées"),
+                    { onAppearance(appearance.copy(screensaverBottles = !appearance.screensaverBottles)) },
+                )
+
+                SectionLabel("Minuterie de veille")
+                SleepTimerItem()
 
                 SectionLabel("Raccourcis")
                 ActionItem("Chaîne Kick · touche 1", "kick.com/${settings.kickChannel}", { editing = Field.Kick })
@@ -208,6 +263,45 @@ private fun nextStep(steps: List<Long>, current: Long): Long = steps.firstOrNull
 private fun <T> next(values: List<T>, current: T): T = values[(values.indexOf(current) + 1) % values.size]
 
 private fun stepLabel(value: String) = "$value · OK pour changer"
+
+/** "90 s · OK…" reads better as "1,5 min · OK…": seconds up to a minute, then minutes. */
+private fun minutesLabel(secondsLabel: String): String {
+    val seconds = secondsLabel.substringBefore(" s").replace(',', '.').toFloatOrNull() ?: return secondsLabel
+    if (seconds < 60f) return secondsLabel
+    val minutes = seconds / 60f
+    val text = if (minutes % 1f == 0f) "${minutes.toInt()} min" else "%.1f min".format(minutes).replace('.', ',')
+    return stepLabel(text)
+}
+
+private val SleepSteps = listOf<Int?>(null, 30, 60, 90, 120)
+
+/** Off → 30 → 60 → 90 → 120 min → off; runs in the accessibility service, so it keeps going in other apps. */
+@Composable
+private fun SleepTimerItem() {
+    val context = LocalContext.current
+    val service = ToolkitAccessibilityService.instance
+    var minutes by remember { mutableStateOf(service?.sleepMinutes) }
+    var endsAt by remember { mutableStateOf(service?.sleepAt) }
+    val label = endsAt?.let {
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(it))
+        "Veille à $time ($minutes min)"
+    } ?: "Désactivée"
+    ActionItem("Mettre la TV en veille", stepLabel(label), {
+        val running = ToolkitAccessibilityService.instance
+        if (running == null) {
+            android.widget.Toast.makeText(
+                context,
+                "Active « Toolkit » dans Paramètres › Accessibilité pour la minuterie",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        } else {
+            val nextMinutes = next(SleepSteps, minutes)
+            running.setSleepTimer(nextMinutes)
+            minutes = running.sleepMinutes
+            endsAt = running.sleepAt
+        }
+    })
+}
 
 private fun holdLabel(ms: Long): String {
     val seconds = if (ms % 1_000L == 0L) "${ms / 1_000L}" else "%.1f".format(ms / 1_000f).replace('.', ',')

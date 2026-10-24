@@ -3,6 +3,7 @@ package com.tk.toolkit.tv.launcher
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.AppRepository
 import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
@@ -29,6 +30,8 @@ data class LauncherState(
     val hiddenApps: List<LauncherApp> = emptyList(),
     /** Installed apps pinned to Continue Watching, in the user's order. */
     val pinnedApps: List<LauncherApp> = emptyList(),
+    /** Installed apps last launched from Toolkit, most recent first. */
+    val recentApps: List<LauncherApp> = emptyList(),
     val loaded: Boolean = false,
     /** App package or pinned app's Continue Watching key currently being repositioned, if any. */
     val movingKey: String? = null,
@@ -91,24 +94,53 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _clockFont.value = font
     }
 
+    private val _appearance = MutableStateFlow(prefs.appearance)
+
+    /** Home screen look, weather and screensaver, set in Toolkit's options. */
+    val appearance: StateFlow<Appearance> = _appearance.asStateFlow()
+
+    fun setAppearance(appearance: Appearance) {
+        val cityChanged = appearance.weatherCity != _appearance.value.weatherCity
+        prefs.appearance = appearance
+        _appearance.value = appearance
+        if (cityChanged) {
+            _weather.value = null
+            startWeather()
+        }
+    }
+
     private val _weather = MutableStateFlow<Weather?>(null)
 
     /** Current weather for the header, or null until the first successful fetch. */
     val weather: StateFlow<Weather?> = _weather.asStateFlow()
 
     private var refreshJob: Job? = null
+    private var weatherJob: Job? = null
     private val refreshDispatcher = Dispatchers.IO.limitedParallelism(1)
 
     init {
         refresh()
-        viewModelScope.launch {
+        startWeather()
+    }
+
+    /** (Re)starts the weather updates, for the city currently chosen. */
+    private fun startWeather() {
+        weatherJob?.cancel()
+        weatherJob = viewModelScope.launch {
             while (true) {
                 // On failure keep showing the last value and try again sooner.
-                val fetched = withContext(Dispatchers.IO) { runCatching { WeatherSource.fetch() }.getOrNull() }
+                val city = _appearance.value.weatherCity
+                val fetched = withContext(Dispatchers.IO) { runCatching { WeatherSource.fetch(city) }.getOrNull() }
                 if (fetched != null) _weather.value = fetched
                 delay(if (fetched != null) WEATHER_REFRESH_MS else WEATHER_RETRY_MS)
             }
         }
+    }
+
+    /** Remembers [app] for the "Récemment utilisées" row; call when launching it. */
+    fun launched(app: LauncherApp) {
+        prefs.recordLaunch(app.packageName)
+        resplit()
     }
 
     fun refresh() {
@@ -132,6 +164,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             apps = visible,
             hiddenApps = hiddenApps.sortedBy { it.label.lowercase() },
             pinnedApps = pinnedPackages(all).mapNotNull { byPackage[it] },
+            recentApps = prefs.recentPackages().mapNotNull { byPackage[it] },
         )
     }
 
