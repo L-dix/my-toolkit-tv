@@ -60,6 +60,32 @@ enum class ScreensaverMode(val label: String) {
     Toolkit("Toolkit : horloge, météo, bouteilles"),
 }
 
+/**
+ * Ambilight during the screensaver: left as the TV has it (default), Toolkit's animation on the
+ * LEDs, or one of the TV's own styles ([style] / [setting] as Philips' API names them).
+ */
+enum class SaverAmbilight(val label: String, val style: String? = null, val setting: String? = null) {
+    Tv("Celui de la TV, inchangé"),
+    Toolkit("Animation Toolkit (style de la touche 2)"),
+    Off("Éteint", "OFF"),
+    VideoStandard("Suivre la vidéo · Standard", "FOLLOW_VIDEO", "STANDARD"),
+    VideoNatural("Suivre la vidéo · Naturel", "FOLLOW_VIDEO", "NATURAL"),
+    VideoVivid("Suivre la vidéo · Vif", "FOLLOW_VIDEO", "VIVID"),
+    VideoImmersive("Suivre la vidéo · Immersif", "FOLLOW_VIDEO", "IMMERSIVE"),
+    VideoGame("Suivre la vidéo · Jeu", "FOLLOW_VIDEO", "GAME"),
+    AudioBrightness("Suivre le son · Luminosité", "FOLLOW_AUDIO", "ENERGY_ADAPTIVE_BRIGHTNESS"),
+    AudioColors("Suivre le son · Couleurs", "FOLLOW_AUDIO", "ENERGY_ADAPTIVE_COLORS"),
+    AudioVuMeter("Suivre le son · VU-mètre", "FOLLOW_AUDIO", "VU_METER"),
+    AudioSpectrum("Suivre le son · Spectre", "FOLLOW_AUDIO", "SPECTRUM_ANALYZER"),
+    AudioSweep("Suivre le son · Balayage", "FOLLOW_AUDIO", "KNIGHT_RIDER_CLOCKWISE"),
+    AudioFlash("Suivre le son · Flashs", "FOLLOW_AUDIO", "RANDOM_PIXEL_FLASH"),
+    AudioParty("Suivre le son · Fête", "FOLLOW_AUDIO", "PARTY"),
+    LoungeLava("Lounge · Lave", "FOLLOW_COLOR", "HOT_LAVA"),
+    LoungeWater("Lounge · Eaux profondes", "FOLLOW_COLOR", "DEEP_WATER"),
+    LoungeNature("Lounge · Nature", "FOLLOW_COLOR", "FRESH_NATURE"),
+    LoungeWarm("Lounge · Blanc chaud", "FOLLOW_COLOR", "ISF"),
+}
+
 /** Everything about the home screen's look, set in Toolkit's options; defaults are the original. */
 data class Appearance(
     val columns: Int = 5,
@@ -73,9 +99,9 @@ data class Appearance(
     val screensaverMode: ScreensaverMode = ScreensaverMode.Tv,
     val screensaverDelayMs: Long = 5 * 60_000L,
     val screensaverBottles: Boolean = true,
-    /** Plays the hold-2 animation on the Ambilight LEDs during the screensaver (once paired). */
-    val ambilightEffect: Boolean = true,
-    /** Brightness of that effect, in percent: dimmed by default. */
+    /** Ambilight during the screensaver (anything but [SaverAmbilight.Tv] needs pairing). */
+    val saverAmbilight: SaverAmbilight = SaverAmbilight.Tv,
+    /** Brightness of Toolkit's animation on the LEDs, in percent: dimmed by default. */
     val ambilightIntensity: Int = 35,
 ) {
     companion object {

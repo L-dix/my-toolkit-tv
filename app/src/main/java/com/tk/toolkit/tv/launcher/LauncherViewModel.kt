@@ -7,6 +7,7 @@ import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.AmbilightEffect
 import com.tk.toolkit.tv.launcher.data.AppRepository
 import com.tk.toolkit.tv.launcher.data.PhilipsTv
+import com.tk.toolkit.tv.launcher.data.SaverAmbilight
 import com.tk.toolkit.tv.launcher.data.BorderSettings
 import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
@@ -141,19 +142,52 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** All settings as a code to keep (see [LauncherPrefs.exportBackup]). */
+    fun exportBackup(): String = prefs.exportBackup()
+
+    /** Restores a backup code and reloads everything from it; false if the code isn't valid. */
+    fun importBackup(code: String): Boolean {
+        if (!prefs.importBackup(code)) return false
+        val cityChanged = prefs.appearance.weatherCity != _appearance.value.weatherCity
+        _appearance.value = prefs.appearance
+        _border.value = prefs.borderSettings
+        _clockFont.value = ClockFont.fromName(prefs.clockFont)
+        _rainbow.value = prefs.rainbowBorder
+        _shortcuts.value = ShortcutSettings(
+            prefs.kickChannel,
+            prefs.youtubePlaylist,
+            prefs.kickHoldMs,
+            prefs.rainbowHoldMs,
+            prefs.playlistHoldMs,
+            prefs.homeQuickSettingsMs,
+            prefs.homeStockHomeMs,
+        )
+        if (cityChanged) startWeather()
+        refresh()
+        return true
+    }
+
     fun forgetAmbilight() {
         stopAmbilightEffect()
         tv.forget()
         _ambilightStatus.value = "Non associé"
     }
 
-    /** Plays the border animation on the Ambilight LEDs (screensaver, or a test of [maxMs]). */
-    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, force: Boolean = false) {
-        if (!tv.isPaired || (!force && !_appearance.value.ambilightEffect)) return
+    /**
+     * Applies the chosen screensaver Ambilight ([choice], by default the one in the options):
+     * Toolkit's animation or a TV style, until stopped or [maxMs]. Nothing to do for "the TV's".
+     */
+    fun startAmbilightEffect(maxMs: Long = AMBILIGHT_MAX_MS, choice: SaverAmbilight = _appearance.value.saverAmbilight) {
+        if (!tv.isPaired || choice == SaverAmbilight.Tv) return
         ambilightJob?.cancel()
         ambilightJob = viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                AmbilightEffect.run(tv, { _border.value }, { _appearance.value.ambilightIntensity }, maxMs)
+                val style = choice.style
+                if (style == null) {
+                    AmbilightEffect.run(tv, { _border.value }, { _appearance.value.ambilightIntensity }, maxMs)
+                } else {
+                    AmbilightEffect.runStyle(tv, style, choice.setting, maxMs)
+                }
             }.onFailure { if (it !is kotlinx.coroutines.CancellationException) _ambilightStatus.value = "Associé · erreur : ${it.message}" }
         }
     }

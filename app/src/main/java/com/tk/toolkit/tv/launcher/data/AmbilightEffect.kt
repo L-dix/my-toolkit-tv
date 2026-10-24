@@ -48,6 +48,28 @@ object AmbilightEffect {
         }
     }
 
+    /**
+     * Switches the Ambilight to one of the TV's own styles until cancelled (or [maxMs]), then
+     * restores the previous setting. Lounge is "FOLLOW_COLOR" on some TVs, "Lounge light" on others.
+     */
+    suspend fun runStyle(tv: PhilipsTv, style: String, setting: String?, maxMs: Long) {
+        val previous = runCatching { tv.currentConfiguration() }.getOrNull()
+        try {
+            val names = if (style == "FOLLOW_COLOR") listOf(style, "Lounge light") else listOf(style)
+            val applied = names.any { name ->
+                val config = JSONObject().put("styleName", name).put("isExpert", false)
+                if (setting != null) config.put("menuSetting", setting)
+                runCatching { tv.restoreConfiguration(config.toString()) }.isSuccess
+            }
+            check(applied) { "style refusé par la TV" }
+            delay(maxMs)
+        } finally {
+            withContext(NonCancellable) {
+                previous?.let { runCatching { tv.restoreConfiguration(it) } }
+            }
+        }
+    }
+
     /** Each LED as (layer side, index, position around the screen from 0 to 1, clockwise). */
     private data class Led(val side: String, val index: Int, val position: Float)
 

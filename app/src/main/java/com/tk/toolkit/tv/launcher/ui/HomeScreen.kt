@@ -72,6 +72,7 @@ import com.tk.toolkit.tv.launcher.data.ContinueWatching
 import com.tk.toolkit.tv.launcher.data.HomeDefaults
 import com.tk.toolkit.tv.launcher.data.LauncherApp
 import com.tk.toolkit.tv.launcher.data.NightMode
+import com.tk.toolkit.tv.launcher.data.SaverAmbilight
 import com.tk.toolkit.tv.launcher.data.ScreensaverMode
 import com.tk.toolkit.tv.launcher.data.Shortcuts
 import com.tk.toolkit.tv.ui.theme.ToolkitColors
@@ -205,15 +206,18 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
     var lastInput by remember { mutableLongStateOf(0L) }
     var saverShown by remember { mutableStateOf(false) }
     var swallowUntilKeyUp by remember { mutableStateOf(false) }
+    fun startScreensaver() {
+        // The TV's own screensaver if chosen and available, else Toolkit's.
+        val tvSaver = appearance.screensaverMode == ScreensaverMode.Tv && AppActions.startSystemScreensaver(context)
+        if (!tvSaver) saverShown = true
+        // And the chosen Ambilight for it (nothing to do when it's left as the TV has it).
+        viewModel.startAmbilightEffect()
+    }
     LaunchedEffect(appearance.screensaverOn, appearance.screensaverDelayMs, resumed, dialogOpen, lastInput) {
         if (!resumed) saverShown = false
         if (!resumed || !appearance.screensaverOn || dialogOpen || saverShown) return@LaunchedEffect
         delay(appearance.screensaverDelayMs)
-        // The TV's own screensaver if chosen and available, else Toolkit's.
-        val tvSaver = appearance.screensaverMode == ScreensaverMode.Tv && AppActions.startSystemScreensaver(context)
-        if (!tvSaver) saverShown = true
-        // The border animation on the Ambilight LEDs only, if paired and enabled.
-        viewModel.startAmbilightEffect()
+        startScreensaver()
     }
     // Coming back from the TV's screensaver: the window gets the focus back.
     val windowFocused = LocalWindowInfo.current.isWindowFocused
@@ -418,8 +422,22 @@ fun HomeScreen(viewModel: LauncherViewModel = viewModel()) {
             onDismiss = { showOptions = false },
             onAmbilightPair = viewModel::startAmbilightPairing,
             onAmbilightPin = viewModel::finishAmbilightPairing,
-            onAmbilightTest = { viewModel.startAmbilightEffect(maxMs = 15_000L, force = true) },
+            onAmbilightTest = {
+                val choice = appearance.saverAmbilight.takeIf { it != SaverAmbilight.Tv } ?: SaverAmbilight.Toolkit
+                viewModel.startAmbilightEffect(maxMs = 15_000L, choice = choice)
+            },
             onAmbilightForget = viewModel::forgetAmbilight,
+            // "Lancer l'économiseur maintenant": at once, even if turned off, once the options
+            // have closed and the focus is back.
+            onExportBackup = viewModel::exportBackup,
+            onImportBackup = viewModel::importBackup,
+            onTestScreensaver = {
+                showOptions = false
+                scope.launch {
+                    delay(400L)
+                    startScreensaver()
+                }
+            },
             onAppearance = viewModel::setAppearance,
             onClockFont = viewModel::setClockFont,
             onShortcuts = viewModel::setShortcuts,

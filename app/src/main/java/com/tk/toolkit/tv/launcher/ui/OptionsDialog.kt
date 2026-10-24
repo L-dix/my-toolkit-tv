@@ -1,6 +1,15 @@
 package com.tk.toolkit.tv.launcher.ui
 
 import androidx.compose.foundation.background
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.EncodeHintType
+import com.google.zxing.BarcodeFormat
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,6 +63,7 @@ import com.tk.toolkit.tv.launcher.data.Appearance
 import com.tk.toolkit.tv.launcher.data.BorderGlow
 import com.tk.toolkit.tv.launcher.data.HomeBackground
 import com.tk.toolkit.tv.launcher.data.NightMode
+import com.tk.toolkit.tv.launcher.data.SaverAmbilight
 import com.tk.toolkit.tv.launcher.data.ScreensaverMode
 import com.tk.toolkit.tv.launcher.data.WeatherCity
 import com.tk.toolkit.tv.launcher.data.WeatherDetail
@@ -68,7 +78,7 @@ import com.tk.toolkit.tv.ui.theme.ToolkitColors
 
 private val PanelShape = RoundedCornerShape(24.dp)
 
-private enum class Field { Kick, Playlist, Font, KickReport, AmbilightPin }
+private enum class Field { Kick, Playlist, Font, KickReport, AmbilightPin, Backup, Restore }
 
 /**
  * Toolkit's own options: clock font, remote shortcuts and their hold durations, and the hold-2
@@ -87,6 +97,9 @@ fun OptionsDialog(
     onAmbilightPin: (String) -> Unit,
     onAmbilightTest: () -> Unit,
     onAmbilightForget: () -> Unit,
+    onTestScreensaver: () -> Unit,
+    onExportBackup: () -> String,
+    onImportBackup: (String) -> Boolean,
     onAppearance: (Appearance) -> Unit,
     onClockFont: (ClockFont) -> Unit,
     onShortcuts: (ShortcutSettings) -> Unit,
@@ -166,6 +179,7 @@ fun OptionsDialog(
                         appearance.copy(screensaverDelayMs = nextStep(Appearance.SCREENSAVER_DELAYS, appearance.screensaverDelayMs))
                     )
                 })
+                ActionItem("Lancer l'économiseur maintenant", "Pour tester, sans attendre le délai", onTestScreensaver)
                 ActionItem(
                     "Bouteilles de Château Margaux",
                     stepLabel(if (appearance.screensaverBottles) "Affichées" else "Masquées"),
@@ -176,18 +190,22 @@ fun OptionsDialog(
                 ActionItem("Associer Toolkit à l'Ambilight", ambilightStatus, {
                     onAmbilightPair { editing = Field.AmbilightPin }
                 })
-                ActionItem(
-                    "Effet sur l'Ambilight seulement",
-                    stepLabel(if (appearance.ambilightEffect) "Activé (style de l'animation touche 2)" else "Désactivé"),
-                    { onAppearance(appearance.copy(ambilightEffect = !appearance.ambilightEffect)) },
-                )
-                ActionItem("Intensité", stepLabel("${appearance.ambilightIntensity} %"), {
+                ActionItem("Ambilight pendant l'économiseur", stepLabel(appearance.saverAmbilight.label), {
+                    onAppearance(appearance.copy(saverAmbilight = next(SaverAmbilight.entries, appearance.saverAmbilight)))
+                })
+                ActionItem("Puissance de l'animation Toolkit", stepLabel("${appearance.ambilightIntensity} %"), {
                     onAppearance(
                         appearance.copy(ambilightIntensity = next(Appearance.AMBILIGHT_INTENSITIES, appearance.ambilightIntensity))
                     )
                 })
-                ActionItem("Tester 15 secondes", "Regarde autour de la TV", onAmbilightTest)
+                ActionItem("Tester 15 secondes", "Le choix ci-dessus (l'animation Toolkit s'il est « inchangé »)", onAmbilightTest)
                 ActionItem("Oublier l'association", "À refaire si la TV a été réinitialisée", onAmbilightForget)
+
+                SectionLabel("Sauvegarde")
+                ActionItem("Sauvegarder mes réglages", "Un QR code et un texte à garder (notes de l'iPhone)", {
+                    editing = Field.Backup
+                })
+                ActionItem("Restaurer des réglages", "Colle le texte sauvegardé", { editing = Field.Restore })
 
                 SectionLabel("Minuterie de veille")
                 SleepTimerItem()
@@ -270,6 +288,23 @@ fun OptionsDialog(
             onDismiss = { editing = null },
             onSave = { onAmbilightPin(it); editing = null },
         )
+        Field.Backup -> BackupDialog(code = remember { onExportBackup() }, onDismiss = { editing = null })
+        Field.Restore -> TextInputDialog(
+            title = "Restaurer des réglages",
+            hint = "Colle le texte commençant par TK1: (clavier de l'appli Google TV sur l'iPhone)",
+            initial = "",
+            parse = { input -> input.trim().takeIf { it.startsWith("TK1:") } },
+            onDismiss = { editing = null },
+            onSave = { code ->
+                val restored = onImportBackup(code)
+                android.widget.Toast.makeText(
+                    context,
+                    if (restored) "Réglages restaurés" else "Ce texte n'est pas une sauvegarde valide",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                editing = null
+            },
+        )
         Field.KickReport -> ReportDialog(
             title = "Diagnostic Kick",
             lines = ToolkitAccessibilityService.instance?.lastKickReport.orEmpty()
@@ -282,6 +317,65 @@ fun OptionsDialog(
             onPick = { onClockFont(it); editing = null },
         )
         null -> Unit
+    }
+}
+
+/**
+ * The settings backup as a QR code, to scan with a phone and keep the text it holds, and as text.
+ * Restoring takes that text back, typed or pasted with the Google TV phone app.
+ */
+@Composable
+private fun BackupDialog(code: String, onDismiss: () -> Unit) {
+    val matrix = remember(code) {
+        QRCodeWriter().encode(
+            code,
+            BarcodeFormat.QR_CODE,
+            0,
+            0,
+            mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.L, EncodeHintType.MARGIN to 2),
+        )
+    }
+    val close = remember { FocusRequester() }
+    LaunchedEffect(Unit) { close.requestFocusWhenReady() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Row(
+            Modifier
+                .width(820.dp)
+                .clip(PanelShape)
+                .background(ToolkitColors.SurfaceRaised)
+                .border(1.dp, Color.White.copy(alpha = 0.08f), PanelShape)
+                .padding(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Canvas(Modifier.size(300.dp).background(Color.White)) {
+                val cell = size.width / matrix.width
+                for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
+                    if (matrix[x, y]) {
+                        drawRect(Color.Black, topLeft = Offset(x * cell, y * cell), size = Size(cell + 0.5f, cell + 0.5f))
+                    }
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Sauvegarde des réglages", style = MaterialTheme.typography.headlineSmall, color = ToolkitColors.OnSurface)
+                Text(
+                    "Scanne le QR code avec l'appareil photo de l'iPhone, puis copie le texte dans tes notes. " +
+                        "Pour restaurer : Options › Restaurer des réglages, et colle ce texte avec le clavier " +
+                        "de l'appli Google TV. Tout est inclus sauf l'association Ambilight.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ToolkitColors.OnSurfaceMuted,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Text(
+                    code,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 9.sp),
+                    color = ToolkitColors.OnSurfaceMuted,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp).focusRequester(close)) { Text("Fermer") }
+            }
+        }
     }
 }
 
